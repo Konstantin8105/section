@@ -8,28 +8,22 @@ import (
 	"github.com/Konstantin8105/pow"
 )
 
-// func area_4node(na,nb, nc, nd msh.Point ) float64 {
-//     return 2*area_3node(na,nb,nc);
-// 	//fabs(0.5*((nb.X - na.X)*(nc.Y - na.Y)- (nc.X - na.X)*(nb.Y - na.Y)))*2;
-// };
-
 type Property struct {
 	A       float64 // area
 	Elastic struct {
 		AtBasePoint struct {
-			Jx, Ymax, Wx float64
-			Jy, Xmax, Wy float64
+			X, Y             float64 // location of center point
+			Alpha            float64 // angle from base coordinates
+			Jx, Ymax, Wx, Rx float64
+			Jy, Xmax, Wy, Ry float64
 		}
 		AtCenterPoint struct {
-			X, Y         float64 // location of center point
-			Jx, Ymax, Wx float64
-			Jy, Xmax, Wy float64
+			Jx, Ymax, Wx, Rx float64
+			Jy, Xmax, Wy, Ry float64
 		}
 		OnSectionAxe struct {
-			X, Y         float64 // location of center point
-			Alpha        float64 // angle from base coordinates
-			Jx, Ymax, Wx float64 // minimal moment inertia
-			Jy, Xmax, Wy float64 // maximal moment inertia
+			Jx, Ymax, Wx, Rx float64 // minimal moment inertia
+			Jy, Xmax, Wy, Ry float64 // maximal moment inertia
 		}
 		Jt, Wt float64
 	}
@@ -37,9 +31,9 @@ type Property struct {
 		Wx, Wy float64
 	}
 	// TODO: shear area
-	// TODO: radius inertia
 	// TODO: polar moment inertia
 	// TODO: check on local buckling
+	// TODO: center of shear
 }
 
 const (
@@ -147,8 +141,8 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 			}
 			lastArea = p.A
 		}
-		p.Elastic.AtCenterPoint.X = center.X
-		p.Elastic.AtCenterPoint.Y = center.Y
+		p.Elastic.AtBasePoint.X = center.X
+		p.Elastic.AtBasePoint.Y = center.Y
 	}
 
 	for i, point := range mesh.Points {
@@ -158,25 +152,68 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 		}
 	}
 
-	calc := func() (j, h, w float64) {
+	calc := func() (j, h, w, r float64) {
 		j, h = p.Jx(mesh)
 		w = j / h
+		r = math.Sqrt(j / p.A)
 		// TODO plastic
 		return
 	}
 
-	p.Elastic.AtBasePoint.Jx, p.Elastic.AtBasePoint.Ymax, p.Elastic.AtBasePoint.Wx = calc()
+	// calculate at the base point
+
+	p.Elastic.AtBasePoint.Jx, p.Elastic.AtBasePoint.Ymax,
+		p.Elastic.AtBasePoint.Wx, p.Elastic.AtBasePoint.Rx = calc()
 	mesh.RotateXOY90deg()
-	p.Elastic.AtBasePoint.Jy, p.Elastic.AtBasePoint.Xmax, p.Elastic.AtBasePoint.Wy = calc()
+	p.Elastic.AtBasePoint.Jy, p.Elastic.AtBasePoint.Xmax,
+		p.Elastic.AtBasePoint.Wy, p.Elastic.AtBasePoint.Ry = calc()
 	mesh.RotateXOY90deg()
 
-	// TODO : find minimal Jx axe
-	// TODO : rotate
-	mesh.MoveXOY(-p.Elastic.AtCenterPoint.X, -p.Elastic.AtCenterPoint.Y)
+	// calculate at the center point
+	mesh.MoveXOY(-p.Elastic.AtBasePoint.X, -p.Elastic.AtBasePoint.Y)
 
-	p.Elastic.AtCenterPoint.Jx, p.Elastic.AtCenterPoint.Ymax, p.Elastic.AtCenterPoint.Wx = calc()
+	p.Elastic.AtCenterPoint.Jx, p.Elastic.AtCenterPoint.Ymax,
+		p.Elastic.AtCenterPoint.Wx, p.Elastic.AtCenterPoint.Rx = calc()
 	mesh.RotateXOY90deg()
-	p.Elastic.AtCenterPoint.Jy, p.Elastic.AtCenterPoint.Xmax, p.Elastic.AtCenterPoint.Wy = calc()
+	p.Elastic.AtCenterPoint.Jy, p.Elastic.AtCenterPoint.Xmax,
+		p.Elastic.AtCenterPoint.Wy, p.Elastic.AtCenterPoint.Ry = calc()
+	mesh.RotateXOY90deg()
+
+	// calculate at the center point with Jx minimal moment of inertia
+	p.Elastic.AtBasePoint.Alpha = func() (alpha float64) {
+		points := make([]msh.Point, len(mesh.Points))
+		copy(points, mesh.Points) // copy
+		defer func() {
+			copy(mesh.Points, points) // repair points
+		}()
+		// find minimimal J between 0 and Pi
+		var (
+			left  = 0.0
+			right = math.Pi
+			lastJ = math.MaxFloat64
+		)
+		// finding
+		for da := math.Pi / 8.0; Eps <= da; da = da / 2.0 { // precision
+			for a := left; a <= right; a += da {
+				copy(mesh.Points, points)             // repair points
+				mesh.RotateXOY(a)                     // rotate
+				if J, _, _, _ := calc(); J <= lastJ { // moment of inertia
+					alpha, lastJ = a, J // store result
+				}
+			}
+			left, right = alpha-da, alpha+da // new borders
+		}
+		return
+	}()
+
+	// rotate
+	mesh.RotateXOY(-p.Elastic.AtBasePoint.Alpha)
+
+	p.Elastic.OnSectionAxe.Jx, p.Elastic.OnSectionAxe.Ymax,
+		p.Elastic.OnSectionAxe.Wx, p.Elastic.OnSectionAxe.Rx = calc()
+	mesh.RotateXOY90deg()
+	p.Elastic.OnSectionAxe.Jy, p.Elastic.OnSectionAxe.Xmax,
+		p.Elastic.OnSectionAxe.Wy, p.Elastic.OnSectionAxe.Ry = calc()
 	mesh.RotateXOY90deg()
 
 	return
