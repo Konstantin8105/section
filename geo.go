@@ -364,10 +364,10 @@ func (r Rectangle) Geo(prec float64) string {
 //	   |--b----|
 type UPN struct {
 	Name    string
-	B       float64 //b  Width
 	H       float64 //h height
-	Tw      float64 //tw
+	B       float64 //b  Width
 	Tf      float64 //tf
+	Tw      float64 //tw
 	Radius1 float64 //r1
 	Radius2 float64 //r2
 }

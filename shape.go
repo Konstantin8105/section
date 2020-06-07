@@ -17,19 +17,19 @@ type Property struct {
 	A       float64 // area
 	Elastic struct {
 		AtBasePoint struct {
-			Jx, Wx float64
-			Jy, Wy float64
+			Jx, Ymax, Wx float64
+			Jy, Xmax, Wy float64
 		}
 		AtCenterPoint struct {
-			X, Y   float64 // location of center point
-			Jx, Wx float64
-			Jy, Wy float64
+			X, Y         float64 // location of center point
+			Jx, Ymax, Wx float64
+			Jy, Xmax, Wy float64
 		}
 		OnSectionAxe struct {
-			X, Y   float64 // location of center point
-			Alpha  float64 // angle from base coordinates
-			Jx, Wx float64 // minimal moment inertia
-			Jy, Wy float64 // maximal moment inertia
+			X, Y         float64 // location of center point
+			Alpha        float64 // angle from base coordinates
+			Jx, Ymax, Wx float64 // minimal moment inertia
+			Jy, Xmax, Wy float64 // maximal moment inertia
 		}
 		Jt, Wt float64
 	}
@@ -69,23 +69,72 @@ func Center3node(na, nb, nc msh.Point) (center msh.Point) {
 	return
 }
 
-func (p *Property) Calculate(g interface{ Geo(prec float64) string }) (err error) {
+func Jx3node(na, nb, nc msh.Point) (j float64) {
+	// calculate of moment of inertia from center point
+	defer func() {
+		c := Center3node(na, nb, nc)
+		a := Area3node(na, nb, nc)
+		j += a * pow.E2(c.Y)
+	}()
+
+	switch {
+	case na.Y == nb.Y:
+		return J(na.X-nb.X, nc.Y-na.Y)
+	case na.Y == nc.Y:
+		return J(na.X-nc.X, nb.Y-na.Y)
+	case nb.Y == nc.Y:
+		return J(nb.X-nc.X, na.Y-nb.Y)
+	}
+
+	// sorting point by Y
+	// na.Y < nb.Y < nc.Y
+	if na.Y < nb.Y {
+		// do nothing
+	} else {
+		na, nb = nb, na // swap
+	}
+	switch {
+	case na.Y < nc.Y && nc.Y < nb.Y:
+		nb, nc = nc, nb // swap
+	case nc.Y < na.Y:
+		na, nb, nc = nc, na, nb // swap
+	}
+
+	// find temp point X,Y between point `a` and `c`
+	var temp = nb
+	temp.X = na.X + (nc.X-na.X)*(nb.Y-na.Y)/(nc.Y-na.Y)
+	temp.Y = nb.Y
+
+	// calculate moment of inertia for 2 triangles
+	return J(nc.Y-nb.Y, nb.X-temp.X) + J(nb.Y-na.Y, nb.X-temp.X)
+}
+
+// J return moment inertia of triangle:
+//	b - size of triangle base
+//	h - heigth of triangle
+func J(b, h float64) float64 {
+	return math.Abs(b * pow.E3(h) / 12.0)
+}
+
+func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error) {
 	var (
 		prec float64 = 0.01
 		mesh *msh.Msh
 	)
+	p = new(Property)
 
 	{ // calculate area and choose precition
 		lastArea := 0.0
 		var center msh.Point
 		for iter := 0; iter < IterMax; iter++ {
+			prec /= 2.0
 			// choose precition by area
 			mesh, err = msh.New(g.Geo(prec))
 			if err != nil {
 				return
 			}
 			if iter == 0 {
-				lastArea = p.Area(mesh)
+				lastArea, _ = p.Area(mesh)
 				continue
 			}
 			if lastArea <= 0 {
@@ -97,34 +146,71 @@ func (p *Property) Calculate(g interface{ Geo(prec float64) string }) (err error
 				break
 			}
 			lastArea = p.A
-			prec /= 2.0
 		}
-		p.AtCenterPoint.X = center.X
-		p.AtCenterPoint.Y = center.Y
+		p.Elastic.AtCenterPoint.X = center.X
+		p.Elastic.AtCenterPoint.Y = center.Y
 	}
 
-	for i, p := range mesh.Points {
-		if p.Z != 0 {
-			err = fmt.Errorf("Coordinate Z of point %d is not zero: %f", i, p.Z)
+	for i, point := range mesh.Points {
+		if point.Z != 0 {
+			err = fmt.Errorf("Coordinate Z of point %d is not zero: %f", i, point.Z)
 			return
 		}
 	}
 
-	// 	for i := range mesh.Triangles {
-	// 		var p [3]msh.Point
-	// 		for j := 0; j < 3; j++ {
-	// 			p[j] = mesh.PointsById(mesh.Triangles[j])
-	// 		}
-	// 		var (
-	// 			area   = Area3node(p[0], p[1], p[2])
-	// 			center = Center3node(p[0], p[1], p[2])
-	// 		)
-	// 		Xc = (area*center.X + Area*Xc) / (Area + area)
-	// 		Yc = (a*yc + Area*Yc) / (Area + a)
-	// 		Area += a
-	// 	}
+	calc := func() (j, h, w float64) {
+		j, h = p.Jx(mesh)
+		w = j / h
+		// TODO plastic
+		return
+	}
 
-	return nil
+	p.Elastic.AtBasePoint.Jx, p.Elastic.AtBasePoint.Ymax, p.Elastic.AtBasePoint.Wx = calc()
+	mesh.RotateXOY90deg()
+	p.Elastic.AtBasePoint.Jy, p.Elastic.AtBasePoint.Xmax, p.Elastic.AtBasePoint.Wy = calc()
+	mesh.RotateXOY90deg()
+
+	// TODO : find minimal Jx axe
+	// TODO : rotate
+	mesh.MoveXOY(-p.Elastic.AtCenterPoint.X, -p.Elastic.AtCenterPoint.Y)
+
+	p.Elastic.AtCenterPoint.Jx, p.Elastic.AtCenterPoint.Ymax, p.Elastic.AtCenterPoint.Wx = calc()
+	mesh.RotateXOY90deg()
+	p.Elastic.AtCenterPoint.Jy, p.Elastic.AtCenterPoint.Xmax, p.Elastic.AtCenterPoint.Wy = calc()
+	mesh.RotateXOY90deg()
+
+	return
+}
+
+func (p Property) Area(mesh *msh.Msh) (Area float64, Center msh.Point) {
+	for i := range mesh.Triangles {
+		var (
+			p      = mesh.PointsById(mesh.Triangles[i].PointsId)
+			area   = Area3node(p[0], p[1], p[2])
+			center = Center3node(p[0], p[1], p[2])
+		)
+		Center.X = (area*center.X + Area*Center.X) / (Area + area)
+		Center.Y = (area*center.Y + Area*Center.Y) / (Area + area)
+		Area += area
+	}
+
+	return
+}
+
+func (p Property) Jx(mesh *msh.Msh) (j, yMax float64) {
+	for i := range mesh.Triangles {
+		p := mesh.PointsById(mesh.Triangles[i].PointsId)
+		j += Jx3node(p[0], p[1], p[2])
+	}
+	for i := range mesh.Points {
+		if i == 0 {
+			yMax = math.Abs(mesh.Points[i].Y)
+		}
+		if y := math.Abs(mesh.Points[i].Y); yMax < y {
+			yMax = y
+		}
+	}
+	return
 }
 
 // func (s Property) X_Zero(n1, n2 msh.Point) {
