@@ -123,14 +123,12 @@ func J(b, h float64) float64 {
 }
 
 func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error) {
-	var (
-		prec float64 = 0.1 // TODO: auto finding
-		mesh *msh.Msh
-	)
+	var mesh *msh.Msh
 	p = new(Property)
 
 	{ // calculate area and choose precition
 		lastArea := 0.0
+		var prec float64 = 0.1 // TODO: auto finding
 		var center msh.Point
 		for iter := 0; iter < IterMax; iter++ {
 			prec /= 2.0
