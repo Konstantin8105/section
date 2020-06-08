@@ -283,8 +283,10 @@ func (p Property) WxPlastic(mesh *msh.Msh) (w float64) {
 		for i := range p {
 			sign[i] = math.Signbit(p[i].Y)
 		}
+		var tr [][3]msh.Point
 		switch {
 		case sign[0] == sign[1] && sign[1] == sign[2]:
+			tr = append(tr,p)
 			w += area * math.Abs(center.Y)
 		case sign[0] != sign[1] && sign[1] == sign[2]:
 			// find 2 point on axe X
