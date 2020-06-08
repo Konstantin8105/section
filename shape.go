@@ -14,22 +14,22 @@ type BendingProperty struct {
 }
 
 type Property struct {
-	A       float64 // area
-	Elastic struct {
-		X, Y  float64 // location of center point
-		Alpha float64 // angle from base coordinates
+	X, Y  float64 // location of center point
+	Alpha float64 // angle from base coordinates
 
-		// Property at base point
-		AtBasePoint BendingProperty
+	A float64 // area
 
-		// Property at center of section
-		AtCenterPoint BendingProperty
+	// Property at base point
+	AtBasePoint BendingProperty
 
-		// Property at center of section with rotation
-		//	* minimal moment inertia on axe x
-		//	* maximal moment inertia on axe y
-		OnSectionAxe BendingProperty
-	}
+	// Property at center of section
+	AtCenterPoint BendingProperty
+
+	// Property at center of section with rotation
+	//	* minimal moment inertia on axe x
+	//	* maximal moment inertia on axe y
+	OnSectionAxe BendingProperty
+
 	// TODO: torsion property
 	// TODO: shear area
 	// TODO: polar moment inertia
@@ -153,8 +153,8 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 			}
 			lastArea = p.A
 		}
-		p.Elastic.X = center.X
-		p.Elastic.Y = center.Y
+		p.X = center.X
+		p.Y = center.Y
 	}
 
 	for i, point := range mesh.Points {
@@ -174,29 +174,29 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 
 	// calculate at the base point
 
-	p.Elastic.AtBasePoint.Jx, p.Elastic.AtBasePoint.Ymax,
-		p.Elastic.AtBasePoint.Wx, p.Elastic.AtBasePoint.Rx,
-		p.Elastic.AtBasePoint.WxPlastic = calc()
+	p.AtBasePoint.Jx, p.AtBasePoint.Ymax,
+		p.AtBasePoint.Wx, p.AtBasePoint.Rx,
+		p.AtBasePoint.WxPlastic = calc()
 	mesh.RotateXOY90deg()
-	p.Elastic.AtBasePoint.Jy, p.Elastic.AtBasePoint.Xmax,
-		p.Elastic.AtBasePoint.Wy, p.Elastic.AtBasePoint.Ry,
-		p.Elastic.AtBasePoint.WyPlastic = calc()
+	p.AtBasePoint.Jy, p.AtBasePoint.Xmax,
+		p.AtBasePoint.Wy, p.AtBasePoint.Ry,
+		p.AtBasePoint.WyPlastic = calc()
 	mesh.RotateXOY90deg()
 
 	// calculate at the center point
-	mesh.MoveXOY(-p.Elastic.X, -p.Elastic.Y)
+	mesh.MoveXOY(-p.X, -p.Y)
 
-	p.Elastic.AtCenterPoint.Jx, p.Elastic.AtCenterPoint.Ymax,
-		p.Elastic.AtCenterPoint.Wx, p.Elastic.AtCenterPoint.Rx,
-		p.Elastic.AtCenterPoint.WxPlastic = calc()
+	p.AtCenterPoint.Jx, p.AtCenterPoint.Ymax,
+		p.AtCenterPoint.Wx, p.AtCenterPoint.Rx,
+		p.AtCenterPoint.WxPlastic = calc()
 	mesh.RotateXOY90deg()
-	p.Elastic.AtCenterPoint.Jy, p.Elastic.AtCenterPoint.Xmax,
-		p.Elastic.AtCenterPoint.Wy, p.Elastic.AtCenterPoint.Ry,
-		p.Elastic.AtCenterPoint.WyPlastic = calc()
+	p.AtCenterPoint.Jy, p.AtCenterPoint.Xmax,
+		p.AtCenterPoint.Wy, p.AtCenterPoint.Ry,
+		p.AtCenterPoint.WyPlastic = calc()
 	mesh.RotateXOY90deg()
 
 	// calculate at the center point with Jx minimal moment of inertia
-	p.Elastic.Alpha = func() (alpha float64) {
+	p.Alpha = func() (alpha float64) {
 		points := make([]msh.Point, len(mesh.Points))
 		copy(points, mesh.Points) // copy
 		defer func() {
@@ -209,10 +209,7 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 			lastJ = math.MaxFloat64
 		)
 		// finding
-
-		// TODO: need more precision 0.00323141708292283, but expect 0.0
-
-		for da := math.Pi / 8.0; Eps <= da; da = da / 2.0 { // precision
+		for da := math.Pi / 8.0; Eps <= da; da = da / 4.0 { // precision
 			for a := left; a <= right; a += da {
 				copy(mesh.Points, points)          // repair points
 				mesh.RotateXOY(a)                  // rotate
@@ -226,15 +223,15 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 	}()
 
 	// rotate
-	mesh.RotateXOY(-p.Elastic.Alpha)
+	mesh.RotateXOY(-p.Alpha)
 
-	p.Elastic.OnSectionAxe.Jx, p.Elastic.OnSectionAxe.Ymax,
-		p.Elastic.OnSectionAxe.Wx, p.Elastic.OnSectionAxe.Rx,
-		p.Elastic.OnSectionAxe.WxPlastic = calc()
+	p.OnSectionAxe.Jx, p.OnSectionAxe.Ymax,
+		p.OnSectionAxe.Wx, p.OnSectionAxe.Rx,
+		p.OnSectionAxe.WxPlastic = calc()
 	mesh.RotateXOY90deg()
-	p.Elastic.OnSectionAxe.Jy, p.Elastic.OnSectionAxe.Xmax,
-		p.Elastic.OnSectionAxe.Wy, p.Elastic.OnSectionAxe.Ry,
-		p.Elastic.OnSectionAxe.WyPlastic = calc()
+	p.OnSectionAxe.Jy, p.OnSectionAxe.Xmax,
+		p.OnSectionAxe.Wy, p.OnSectionAxe.Ry,
+		p.OnSectionAxe.WyPlastic = calc()
 	mesh.RotateXOY90deg()
 
 	return
@@ -346,99 +343,7 @@ func (p Property) WxPlastic(mesh *msh.Msh) (w float64) {
 				center = Center3node(na, nb, nc)
 				w += area * math.Abs(center.Y)
 			}
-		default:
-			a, b, c := SortByY(p[0], p[1], p[2])
-			panic(fmt.Errorf("%#v\n%#v\n%v %v %v", p, sign, a, b, c))
 		}
 	}
 	return
 }
-
-// 	// WX_PLASTIC //
-// 	{
-// 		Wx_Plastic = 0
-// 		angle = 0
-// 		mesh.RotatePointXOY(0, 0, +RADIANS(angle))
-// 		for i = 0; i < numEl; i++ {
-// 			el = mesh.elements.Get(i)
-// 			if el.ElmType == ELEMENT_TYPE_TRIANGLE {
-// 				var p [3]msh.Point
-// 				p[0] = mesh.nodes.Get(el.node[0] - 1)
-// 				p[1] = mesh.nodes.Get(el.node[1] - 1)
-// 				p[2] = mesh.nodes.Get(el.node[2] - 1)
-// 				simple_case := false
-// 				if (p[0].Y != 0 || p[1].Y != 0 || p[2].Y != 0) &&
-// 					(p[0].Y/p[1].Y > 0 && p[0].Y/p[2].Y > 0 && p[1].Y/p[2].Y > 0) {
-// 					Wx_Plastic += (fabs(p[0].Y+p[1].Y+p[2].Y) / 3.) * (area_3node(p[0], p[1], p[2]))
-// 					simple_case = true
-// 				}
-// 				if !simple_case {
-// 					if (p[0].Y == 0 || p[1].Y == 0) ||
-// 						(p[1].Y == 0 || p[2].Y == 0) ||
-// 						(p[2].Y == 0 || p[0].Y == 0) {
-// 						Wx_Plastic += (fabs(p[0].Y+p[1].Y+p[2].Y) / 3.) * (area_3node(p[0], p[1], p[2]))
-// 					} else if p[0].Y == 0 && p[1].Y/p[2].Y < 0 {
-// 						var tmp msh.Point // intersect with zero line
-// 						tmp.X = p[1].X + (p[2].X-p[1].X)*fabs(p[1].Y)/(fabs(p[2].Y)+fabs(p[1].Y))
-// 						tmp.Y = 0
-// 						tmp.z = 0.
-// 						Wx_Plastic += (fabs(p[0].Y+p[1].Y+tmp.Y) / 3.) * (area_3node(p[0], p[1], tmp))
-// 						Wx_Plastic += (fabs(p[0].Y+p[2].Y+tmp.Y) / 3.) * (area_3node(p[0], p[2], tmp))
-// 					} else if p[1].Y == 0 && p[2].Y/p[0].Y < 0 {
-// 						var tmp msh.Point // intersect with zero line
-// 						tmp.X = p[0].X + (p[2].X-p[0].X)*fabs(p[0].Y)/(fabs(p[2].Y)+fabs(p[0].Y))
-// 						tmp.Y = 0
-// 						tmp.z = 0.
-// 						Wx_Plastic += (fabs(p[1].Y+p[0].Y+tmp.Y) / 3.) * (area_3node(p[1], p[0], tmp))
-// 						Wx_Plastic += (fabs(p[1].Y+p[2].Y+tmp.Y) / 3.) * (area_3node(p[1], p[2], tmp))
-// 					} else if p[2].Y == 0 && p[1].Y/p[0].Y < 0 {
-// 						var tmp msh.Point // intersect with zero line
-// 						tmp.X = p[0].X + (p[1].X-p[0].X)*fabs(p[0].Y)/(fabs(p[1].Y)+fabs(p[0].Y))
-// 						tmp.Y = 0
-// 						tmp.z = 0.
-// 						Wx_Plastic += (fabs(p[2].Y+p[0].Y+tmp.Y) / 3.) * (area_3node(p[2], p[0], tmp))
-// 						Wx_Plastic += (fabs(p[2].Y+p[1].Y+tmp.Y) / 3.) * (area_3node(p[2], p[1], tmp))
-// 					} else if p[0].Y/p[1].Y < 0 && p[0].Y/p[2].Y < 0 {
-// 						var tmp msh.Point1
-// 						tmp1.Y = 0
-// 						tmp1.z = 0.
-// 						tmp1.X = p[0].X + (p[1].X-p[0].X)*fabs(p[0].Y)/(fabs(p[1].Y)+fabs(p[0].Y))
-// 						var tmp msh.Point2
-// 						tmp2.Y = 0
-// 						tmp2.z = 0.
-// 						tmp2.X = p[0].X + (p[2].X-p[0].X)*fabs(p[0].Y)/(fabs(p[2].Y)+fabs(p[0].Y))
-// 						Wx_Plastic += (fabs(p[0].Y+tmp1.Y+tmp2.Y) / 3.) * (area_3node(p[0], tmp1, tmp2))
-// 						Wx_Plastic += (fabs(p[1].Y+tmp1.Y+tmp2.Y) / 3.) * (area_3node(p[1], tmp1, tmp2))
-// 						Wx_Plastic += (fabs(p[2].Y+p[1].Y+tmp2.Y) / 3.) * (area_3node(p[2], p[1], tmp2))
-// 					} else if p[1].Y/p[0].Y < 0 && p[1].Y/p[2].Y < 0 {
-// 						var tmp msh.Point1
-// 						tmp1.Y = 0
-// 						tmp1.z = 0.
-// 						tmp1.X = p[0].X + (p[1].X-p[0].X)*fabs(p[0].Y)/(fabs(p[1].Y)+fabs(p[0].Y))
-// 						var tmp msh.Point2
-// 						tmp2.Y = 0
-// 						tmp2.z = 0.
-// 						tmp2.X = p[1].X + (p[2].X-p[1].X)*fabs(p[1].Y)/(fabs(p[2].Y)+fabs(p[1].Y))
-// 						Wx_Plastic += (fabs(p[1].Y+tmp1.Y+tmp2.Y) / 3.) * (area_3node(p[1], tmp1, tmp2))
-// 						Wx_Plastic += (fabs(p[0].Y+tmp1.Y+tmp2.Y) / 3.) * (area_3node(p[0], tmp1, tmp2))
-// 						Wx_Plastic += (fabs(p[2].Y+p[0].Y+tmp2.Y) / 3.) * (area_3node(p[2], p[0], tmp2))
-// 					} else if p[2].Y/p[0].Y < 0 && p[2].Y/p[1].Y < 0 {
-// 						var tmp msh.Point1
-// 						tmp1.Y = 0
-// 						tmp1.z = 0.
-// 						tmp1.X = p[0].X + (p[2].X-p[0].X)*fabs(p[0].Y)/(fabs(p[2].Y)+fabs(p[0].Y))
-// 						var tmp msh.Point2
-// 						tmp2.Y = 0
-// 						tmp2.z = 0.
-// 						tmp2.X = p[1].X + (p[2].X-p[1].X)*fabs(p[1].Y)/(fabs(p[2].Y)+fabs(p[1].Y))
-// 						Wx_Plastic += (fabs(p[2].Y+tmp1.Y+tmp2.Y) / 3.) * (area_3node(p[2], tmp1, tmp2))
-// 						Wx_Plastic += (fabs(p[0].Y+tmp1.Y+tmp2.Y) / 3.) * (area_3node(p[0], tmp1, tmp2))
-// 						Wx_Plastic += (fabs(p[1].Y+p[0].Y+tmp2.Y) / 3.) * (area_3node(p[1], p[0], tmp2))
-// 					} else {
-// 						printf("IO-")
-// 					}
-// 				}
-// 			}
-// 		}
-// 		mesh.RotatePointXOY(0, 0, -RADIANS(angle))
-// 	}
