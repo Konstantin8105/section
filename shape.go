@@ -138,7 +138,7 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 				return
 			}
 			if iter == 0 {
-				lastArea, _ = p.Area(mesh)
+				lastArea, _ = p.Area(mesh) // center is no need
 				continue
 			}
 			if lastArea <= 0 {
@@ -294,23 +294,13 @@ func (p Property) WxPlastic(mesh *msh.Msh) (w float64) {
 			p02 := OnAxeX(p[0], p[2])
 
 			// triangles:
-			var na, nb, nc msh.Point
-			{
-				na, nb, nc = p[0], p01, p02
-				area = Area3node(na, nb, nc)
-				center = Center3node(na, nb, nc)
-				w += area * math.Abs(center.Y)
-			}
-			{
-				na, nb, nc = p[1], p01, p02
-				area = Area3node(na, nb, nc)
-				center = Center3node(na, nb, nc)
-				w += area * math.Abs(center.Y)
-			}
-			{
-				na, nb, nc = p[1], p02, p[2]
-				area = Area3node(na, nb, nc)
-				center = Center3node(na, nb, nc)
+			for _, n := range [3]Point{
+				{p[0], p01, p02},
+				{p[1], p01, p02},
+				{p[1], p02, p[2]},
+			} {
+				area = Area3node(n[0], n[1], n[2])
+				center = Center3node(n[0], n[1], n[2])
 				w += area * math.Abs(center.Y)
 			}
 
@@ -322,23 +312,13 @@ func (p Property) WxPlastic(mesh *msh.Msh) (w float64) {
 			p21 := OnAxeX(p[2], p[1])
 
 			// triangles:
-			var na, nb, nc msh.Point
-			{
-				na, nb, nc = p[2], p20, p21
-				area = Area3node(na, nb, nc)
-				center = Center3node(na, nb, nc)
-				w += area * math.Abs(center.Y)
-			}
-			{
-				na, nb, nc = p[1], p21, p20
-				area = Area3node(na, nb, nc)
-				center = Center3node(na, nb, nc)
-				w += area * math.Abs(center.Y)
-			}
-			{
-				na, nb, nc = p[0], p20, p[1]
-				area = Area3node(na, nb, nc)
-				center = Center3node(na, nb, nc)
+			for _, n := range [3]Point{
+				{p[2], p20, p21},
+				{p[1], p21, p20},
+				{p[0], p20, p[1]},
+			} {
+				area = Area3node(n[0], n[1], n[2])
+				center = Center3node(n[0], n[1], n[2])
 				w += area * math.Abs(center.Y)
 			}
 		}
