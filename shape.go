@@ -9,8 +9,8 @@ import (
 )
 
 type BendingProperty struct {
-	Jx, Ymax, Wx, Rx float64
-	Jy, Xmax, Wy, Ry float64
+	Jx, Ymax, Wx, Rx, WxPlastic float64
+	Jy, Xmax, Wy, Ry, WyPlastic float64
 }
 
 type Property struct {
@@ -29,12 +29,8 @@ type Property struct {
 		//	* minimal moment inertia on axe x
 		//	* maximal moment inertia on axe y
 		OnSectionAxe BendingProperty
-
-		Jt, Wt float64
 	}
-	Plastic struct {
-		Wx, Wy float64
-	}
+	// TODO: torsion property
 	// TODO: shear area
 	// TODO: polar moment inertia
 	// TODO: check on local buckling
@@ -68,6 +64,27 @@ func Center3node(na, nb, nc msh.Point) (center msh.Point) {
 	return
 }
 
+func SortByY(na, nb, nc msh.Point) (_, _, _ msh.Point) {
+	// sorting point by Y
+	// Expect: na.Y <= nb.Y <= nc.Y
+	if na.Y <= nb.Y {
+		// do nothing
+	} else {
+		na, nb = nb, na // swap
+	}
+	// now : na.Y <= nb.Y and nc is ?
+	switch {
+	case nb.Y <= nc.Y:
+		// do nothing
+	case na.Y <= nc.Y && nc.Y <= nb.Y:
+		nb, nc = nc, nb // swap
+	case nc.Y <= na.Y:
+		na, nb, nc = nc, na, nb // swap
+	}
+
+	return na, nb, nc
+}
+
 func Jx3node(na, nb, nc msh.Point) (j float64) {
 	// calculate of moment of inertia from center point
 	defer func() {
@@ -87,17 +104,7 @@ func Jx3node(na, nb, nc msh.Point) (j float64) {
 
 	// sorting point by Y
 	// na.Y < nb.Y < nc.Y
-	if na.Y < nb.Y {
-		// do nothing
-	} else {
-		na, nb = nb, na // swap
-	}
-	switch {
-	case na.Y < nc.Y && nc.Y < nb.Y:
-		nb, nc = nc, nb // swap
-	case nc.Y < na.Y:
-		na, nb, nc = nc, na, nb // swap
-	}
+	na, nb, nc = SortByY(na, nb, nc)
 
 	// find temp point X,Y between point `a` and `c`
 	var temp = nb
@@ -117,7 +124,7 @@ func J(b, h float64) float64 {
 
 func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error) {
 	var (
-		prec float64 = 0.01
+		prec float64 = 0.1 // TODO: auto finding
 		mesh *msh.Msh
 	)
 	p = new(Property)
@@ -157,31 +164,35 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 		}
 	}
 
-	calc := func() (j, h, w, r float64) {
+	calc := func() (j, h, w, r, wpl float64) {
 		j, h = p.Jx(mesh)
 		w = j / h
 		r = math.Sqrt(j / p.A)
-		// TODO plastic
+		wpl = p.WxPlastic(mesh)
 		return
 	}
 
 	// calculate at the base point
 
 	p.Elastic.AtBasePoint.Jx, p.Elastic.AtBasePoint.Ymax,
-		p.Elastic.AtBasePoint.Wx, p.Elastic.AtBasePoint.Rx = calc()
+		p.Elastic.AtBasePoint.Wx, p.Elastic.AtBasePoint.Rx,
+		p.Elastic.AtBasePoint.WxPlastic = calc()
 	mesh.RotateXOY90deg()
 	p.Elastic.AtBasePoint.Jy, p.Elastic.AtBasePoint.Xmax,
-		p.Elastic.AtBasePoint.Wy, p.Elastic.AtBasePoint.Ry = calc()
+		p.Elastic.AtBasePoint.Wy, p.Elastic.AtBasePoint.Ry,
+		p.Elastic.AtBasePoint.WyPlastic = calc()
 	mesh.RotateXOY90deg()
 
 	// calculate at the center point
 	mesh.MoveXOY(-p.Elastic.X, -p.Elastic.Y)
 
 	p.Elastic.AtCenterPoint.Jx, p.Elastic.AtCenterPoint.Ymax,
-		p.Elastic.AtCenterPoint.Wx, p.Elastic.AtCenterPoint.Rx = calc()
+		p.Elastic.AtCenterPoint.Wx, p.Elastic.AtCenterPoint.Rx,
+		p.Elastic.AtCenterPoint.WxPlastic = calc()
 	mesh.RotateXOY90deg()
 	p.Elastic.AtCenterPoint.Jy, p.Elastic.AtCenterPoint.Xmax,
-		p.Elastic.AtCenterPoint.Wy, p.Elastic.AtCenterPoint.Ry = calc()
+		p.Elastic.AtCenterPoint.Wy, p.Elastic.AtCenterPoint.Ry,
+		p.Elastic.AtCenterPoint.WyPlastic = calc()
 	mesh.RotateXOY90deg()
 
 	// calculate at the center point with Jx minimal moment of inertia
@@ -198,11 +209,14 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 			lastJ = math.MaxFloat64
 		)
 		// finding
+
+		// TODO: need more precision 0.00323141708292283, but expect 0.0
+
 		for da := math.Pi / 8.0; Eps <= da; da = da / 2.0 { // precision
 			for a := left; a <= right; a += da {
-				copy(mesh.Points, points)            // repair points
-				mesh.RotateXOY(a)                    // rotate
-				if J, _, _, _ := calc(); J < lastJ { // moment of inertia
+				copy(mesh.Points, points)          // repair points
+				mesh.RotateXOY(a)                  // rotate
+				if J, _ := p.Jx(mesh); J < lastJ { // moment of inertia
 					alpha, lastJ = a, J // store result
 				}
 			}
@@ -215,10 +229,12 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 	mesh.RotateXOY(-p.Elastic.Alpha)
 
 	p.Elastic.OnSectionAxe.Jx, p.Elastic.OnSectionAxe.Ymax,
-		p.Elastic.OnSectionAxe.Wx, p.Elastic.OnSectionAxe.Rx = calc()
+		p.Elastic.OnSectionAxe.Wx, p.Elastic.OnSectionAxe.Rx,
+		p.Elastic.OnSectionAxe.WxPlastic = calc()
 	mesh.RotateXOY90deg()
 	p.Elastic.OnSectionAxe.Jy, p.Elastic.OnSectionAxe.Xmax,
-		p.Elastic.OnSectionAxe.Wy, p.Elastic.OnSectionAxe.Ry = calc()
+		p.Elastic.OnSectionAxe.Wy, p.Elastic.OnSectionAxe.Ry,
+		p.Elastic.OnSectionAxe.WyPlastic = calc()
 	mesh.RotateXOY90deg()
 
 	return
@@ -250,6 +266,89 @@ func (p Property) Jx(mesh *msh.Msh) (j, yMax float64) {
 		}
 		if y := math.Abs(mesh.Points[i].Y); yMax < y {
 			yMax = y
+		}
+	}
+	return
+}
+
+func OnAxeX(a, b msh.Point) (c msh.Point) {
+	c.X = a.X + (b.X-a.X)*math.Abs(a.Y/(a.Y-b.Y))
+	return
+}
+
+func (p Property) WxPlastic(mesh *msh.Msh) (w float64) {
+	for i := range mesh.Triangles {
+		var (
+			p      = mesh.PointsById(mesh.Triangles[i].PointsId)
+			area   = Area3node(p[0], p[1], p[2])
+			center = Center3node(p[0], p[1], p[2])
+			sign   [3]bool
+		)
+		p[0], p[1], p[2] = SortByY(p[0], p[1], p[2])
+		for i := range p {
+			sign[i] = math.Signbit(p[i].Y)
+		}
+		switch {
+		case sign[0] == sign[1] && sign[1] == sign[2]:
+			w += area * math.Abs(center.Y)
+		case sign[0] != sign[1] && sign[1] == sign[2]:
+			// find 2 point on axe X
+			// between 0 and 1
+			p01 := OnAxeX(p[0], p[1])
+			// between 0 and 2
+			p02 := OnAxeX(p[0], p[2])
+
+			// triangles:
+			var na, nb, nc msh.Point
+			{
+				na, nb, nc = p[0], p01, p02
+				area = Area3node(na, nb, nc)
+				center = Center3node(na, nb, nc)
+				w += area * math.Abs(center.Y)
+			}
+			{
+				na, nb, nc = p[1], p01, p02
+				area = Area3node(na, nb, nc)
+				center = Center3node(na, nb, nc)
+				w += area * math.Abs(center.Y)
+			}
+			{
+				na, nb, nc = p[1], p02, p[2]
+				area = Area3node(na, nb, nc)
+				center = Center3node(na, nb, nc)
+				w += area * math.Abs(center.Y)
+			}
+
+		case sign[0] == sign[1] && sign[1] != sign[2]:
+			// find 2 point on axe X
+			// between 2 and 0
+			p20 := OnAxeX(p[2], p[0])
+			// between 2 and 1
+			p21 := OnAxeX(p[2], p[1])
+
+			// triangles:
+			var na, nb, nc msh.Point
+			{
+				na, nb, nc = p[2], p20, p21
+				area = Area3node(na, nb, nc)
+				center = Center3node(na, nb, nc)
+				w += area * math.Abs(center.Y)
+			}
+			{
+				na, nb, nc = p[1], p21, p20
+				area = Area3node(na, nb, nc)
+				center = Center3node(na, nb, nc)
+				w += area * math.Abs(center.Y)
+			}
+			{
+				na, nb, nc = p[0], p20, p[1]
+				area = Area3node(na, nb, nc)
+				center = Center3node(na, nb, nc)
+				w += area * math.Abs(center.Y)
+			}
+		default:
+			a, b, c := SortByY(p[0], p[1], p[2])
+			panic(fmt.Errorf("%#v\n%#v\n%v %v %v", p, sign, a, b, c))
 		}
 	}
 	return
