@@ -8,23 +8,28 @@ import (
 	"github.com/Konstantin8105/pow"
 )
 
+type BendingProperty struct {
+	Jx, Ymax, Wx, Rx float64
+	Jy, Xmax, Wy, Ry float64
+}
+
 type Property struct {
 	A       float64 // area
 	Elastic struct {
-		AtBasePoint struct {
-			X, Y             float64 // location of center point
-			Alpha            float64 // angle from base coordinates
-			Jx, Ymax, Wx, Rx float64
-			Jy, Xmax, Wy, Ry float64
-		}
-		AtCenterPoint struct {
-			Jx, Ymax, Wx, Rx float64
-			Jy, Xmax, Wy, Ry float64
-		}
-		OnSectionAxe struct {
-			Jx, Ymax, Wx, Rx float64 // minimal moment inertia
-			Jy, Xmax, Wy, Ry float64 // maximal moment inertia
-		}
+		X, Y  float64 // location of center point
+		Alpha float64 // angle from base coordinates
+
+		// Property at base point
+		AtBasePoint BendingProperty
+
+		// Property at center of section
+		AtCenterPoint BendingProperty
+
+		// Property at center of section with rotation
+		//	* minimal moment inertia on axe x
+		//	* maximal moment inertia on axe y
+		OnSectionAxe BendingProperty
+
 		Jt, Wt float64
 	}
 	Plastic struct {
@@ -141,8 +146,8 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 			}
 			lastArea = p.A
 		}
-		p.Elastic.AtBasePoint.X = center.X
-		p.Elastic.AtBasePoint.Y = center.Y
+		p.Elastic.X = center.X
+		p.Elastic.Y = center.Y
 	}
 
 	for i, point := range mesh.Points {
@@ -170,7 +175,7 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 	mesh.RotateXOY90deg()
 
 	// calculate at the center point
-	mesh.MoveXOY(-p.Elastic.AtBasePoint.X, -p.Elastic.AtBasePoint.Y)
+	mesh.MoveXOY(-p.Elastic.X, -p.Elastic.Y)
 
 	p.Elastic.AtCenterPoint.Jx, p.Elastic.AtCenterPoint.Ymax,
 		p.Elastic.AtCenterPoint.Wx, p.Elastic.AtCenterPoint.Rx = calc()
@@ -180,7 +185,7 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 	mesh.RotateXOY90deg()
 
 	// calculate at the center point with Jx minimal moment of inertia
-	p.Elastic.AtBasePoint.Alpha = func() (alpha float64) {
+	p.Elastic.Alpha = func() (alpha float64) {
 		points := make([]msh.Point, len(mesh.Points))
 		copy(points, mesh.Points) // copy
 		defer func() {
@@ -207,7 +212,7 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 	}()
 
 	// rotate
-	mesh.RotateXOY(-p.Elastic.AtBasePoint.Alpha)
+	mesh.RotateXOY(-p.Elastic.Alpha)
 
 	p.Elastic.OnSectionAxe.Jx, p.Elastic.OnSectionAxe.Ymax,
 		p.Elastic.OnSectionAxe.Wx, p.Elastic.OnSectionAxe.Rx = calc()

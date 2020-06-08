@@ -1,6 +1,8 @@
 package section_test
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -10,7 +12,7 @@ import (
 	"github.com/Konstantin8105/section"
 )
 
-func TestAngle(t *testing.T){
+func TestAngle(t *testing.T) {
 	an := section.Angles[9]
 
 	pr, err := section.Calculate(an)
@@ -22,7 +24,6 @@ func TestAngle(t *testing.T){
 	fmt.Fprintf(os.Stdout, "%#v\n", pr)
 }
 
-
 func ExampleUpn() {
 	upn := section.UPNs[4]
 
@@ -33,6 +34,17 @@ func ExampleUpn() {
 
 	fmt.Fprintf(os.Stdout, "%s\n", upn)
 	fmt.Fprintf(os.Stdout, "%#v\n", pr)
+
+	b, err := json.Marshal(*pr)
+	if err != nil {
+		panic(err)
+	}
+	var buf bytes.Buffer
+	err = json.Indent(&buf, b, " ", "\t")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprintf(os.Stdout, buf.String())
 
 	// Output:
 }
