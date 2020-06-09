@@ -274,10 +274,8 @@ func OnAxeX(a, b msh.Point) (c msh.Point) {
 func (p Property) WxPlastic(mesh *msh.Msh) (w float64) {
 	for i := range mesh.Triangles {
 		var (
-			p      = mesh.PointsById(mesh.Triangles[i].PointsId)
-			area   = Area3node(p[0], p[1], p[2])
-			center = Center3node(p[0], p[1], p[2])
-			sign   [3]bool
+			p    = mesh.PointsById(mesh.Triangles[i].PointsId)
+			sign [3]bool
 		)
 		p[0], p[1], p[2] = SortByY(p[0], p[1], p[2])
 		for i := range p {
@@ -286,25 +284,20 @@ func (p Property) WxPlastic(mesh *msh.Msh) (w float64) {
 		var tr [][3]msh.Point
 		switch {
 		case sign[0] == sign[1] && sign[1] == sign[2]:
-			tr = append(tr,p)
-			w += area * math.Abs(center.Y)
+			tr = append(tr, p)
+
 		case sign[0] != sign[1] && sign[1] == sign[2]:
 			// find 2 point on axe X
 			// between 0 and 1
 			p01 := OnAxeX(p[0], p[1])
 			// between 0 and 2
 			p02 := OnAxeX(p[0], p[2])
-
 			// triangles:
-			for _, n := range [3]Point{
-				{p[0], p01, p02},
-				{p[1], p01, p02},
-				{p[1], p02, p[2]},
-			} {
-				area = Area3node(n[0], n[1], n[2])
-				center = Center3node(n[0], n[1], n[2])
-				w += area * math.Abs(center.Y)
-			}
+			tr = append(tr,
+				[3]msh.Point{p[0], p01, p02},
+				[3]msh.Point{p[1], p01, p02},
+				[3]msh.Point{p[1], p02, p[2]},
+			)
 
 		case sign[0] == sign[1] && sign[1] != sign[2]:
 			// find 2 point on axe X
@@ -312,17 +305,18 @@ func (p Property) WxPlastic(mesh *msh.Msh) (w float64) {
 			p20 := OnAxeX(p[2], p[0])
 			// between 2 and 1
 			p21 := OnAxeX(p[2], p[1])
-
 			// triangles:
-			for _, n := range [3]Point{
-				{p[2], p20, p21},
-				{p[1], p21, p20},
-				{p[0], p20, p[1]},
-			} {
-				area = Area3node(n[0], n[1], n[2])
-				center = Center3node(n[0], n[1], n[2])
-				w += area * math.Abs(center.Y)
-			}
+			tr = append(tr,
+				[3]msh.Point{p[2], p20, p21},
+				[3]msh.Point{p[1], p21, p20},
+				[3]msh.Point{p[0], p20, p[1]},
+			)
+		}
+		// calculate for one triangle
+		for _, n := range tr {
+			area := Area3node(n[0], n[1], n[2])
+			center := Center3node(n[0], n[1], n[2])
+			w += area * math.Abs(center.Y)
 		}
 	}
 	return
