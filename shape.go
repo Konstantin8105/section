@@ -8,9 +8,53 @@ import (
 	"github.com/Konstantin8105/pow"
 )
 
+// Moment inertia calculation:
+//
+//	dA = ax*dy
+//	Jxx = integral(y*y,dA)          // bending moments of inertia
+//	Jyy = integral(x*x,dA)          // bending moments of inertia
+//	Jxy = integral(x*y,dA)          // centrifugal moment of inertia
+//	Jo  = integral(r^2,dA) = Jx+Jy  // polar moment of inertia
+//	ko  = sqrt(Jo/A)
+//
+// Moment inertia for rotate system coordinate on angle O:
+//	Ju  = (Jx+Jy)/2 + (Jx-Jy)/2*cos(2*O) - Jxy*sin(2*O)
+//	Jv  = (Jx+Jy)/2 - (Jx-Jy)/2*cos(2*O) + Jxy*sin(2*O)
+//	Juv = (Jx-Jy)/2*sin(2*O)+Jxy*cos(2*O)
+//	Jo  = Ju+Jv = Jx+Jy
+//
+// Max/min moment inertia:
+//	tan(2*O) = (-Jxy)/((Jx-Jy)/2)
+//	Jmax,min = (Jx+Jy)/2 +- sqrt(((Jx-Jy)/2)^2+Jxy^2)
+//
+// Matrix of moment inertia:
+//	[ Jxx -Jxy]
+//	[-Jxy  Jyy]
+//
 type BendingProperty struct {
-	Jx, Ymax, Wx, Rx, WxPlastic float64
-	Jy, Xmax, Wy, Ry, WyPlastic float64
+	Jxx, Ymax, Wx, Rx, WxPlastic float64
+	Jyy, Xmax, Wy, Ry, WyPlastic float64
+	Jxy                          float64 // TODO
+	// TODO http://homes.civil.aau.dk/jc/FemteSemester/Beams3D.pdf
+}
+
+func (b *BendingProperty) Calculate(mesh msh.Msh) {
+	A,_ := Area(mesh)
+	calc := func() (j, h, w, r, wpl float64) {
+		j, h = Jxx(mesh)
+		w = j / h
+		r = math.Sqrt(j / A)
+		wpl = WxPlastic(mesh)
+		return
+	}
+
+	const perp float64 = math.Pi/2.0 // 90 degree
+
+	b.Jxx, b.Ymax, b.Wx, b.Rx, b.WxPlastic = calc()
+	mesh.RotateXOY(perp)
+	b.Jyy, b.Xmax, b.Wy, b.Ry, b.WyPlastic = calc()
+	mesh.RotateXOY(-perp)
+	b.Jxy = Jxy(mesh)
 }
 
 type Property struct {
@@ -138,14 +182,14 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 				return
 			}
 			if iter == 0 {
-				lastArea, _ = p.Area(mesh) // center is no need
+				lastArea, _ = Area(*mesh) // center is no need
 				continue
 			}
 			if lastArea <= 0 {
 				err = fmt.Errorf("Area is not valid: %e", lastArea)
 				return
 			}
-			p.A, center = p.Area(mesh)
+			p.A, center = Area(*mesh)
 			if math.Abs((p.A-lastArea)/lastArea) < Eps {
 				break
 			}
@@ -162,36 +206,14 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 		}
 	}
 
-	calc := func() (j, h, w, r, wpl float64) {
-		j, h = p.Jx(mesh)
-		w = j / h
-		r = math.Sqrt(j / p.A)
-		wpl = p.WxPlastic(mesh)
-		return
-	}
-
 	// calculate at the base point
-
-	p.AtBasePoint.Jx, p.AtBasePoint.Ymax,
-		p.AtBasePoint.Wx, p.AtBasePoint.Rx,
-		p.AtBasePoint.WxPlastic = calc()
-	mesh.RotateXOY90deg()
-	p.AtBasePoint.Jy, p.AtBasePoint.Xmax,
-		p.AtBasePoint.Wy, p.AtBasePoint.Ry,
-		p.AtBasePoint.WyPlastic = calc()
-	mesh.RotateXOY90deg()
+	p.AtBasePoint.Calculate(*mesh)
 
 	// calculate at the center point
 	mesh.MoveXOY(-p.X, -p.Y)
 
-	p.AtCenterPoint.Jx, p.AtCenterPoint.Ymax,
-		p.AtCenterPoint.Wx, p.AtCenterPoint.Rx,
-		p.AtCenterPoint.WxPlastic = calc()
-	mesh.RotateXOY90deg()
-	p.AtCenterPoint.Jy, p.AtCenterPoint.Xmax,
-		p.AtCenterPoint.Wy, p.AtCenterPoint.Ry,
-		p.AtCenterPoint.WyPlastic = calc()
-	mesh.RotateXOY90deg()
+	// calculate at the center point
+	p.AtCenterPoint.Calculate(*mesh)
 
 	// calculate at the center point with Jx minimal moment of inertia
 	p.Alpha = func() (alpha float64) {
@@ -211,7 +233,7 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 			for a := left; a <= right; a += da {
 				copy(mesh.Points, points)          // repair points
 				mesh.RotateXOY(a)                  // rotate
-				if J, _ := p.Jx(mesh); J < lastJ { // moment of inertia
+				if J, _ := Jxx(*mesh); J < lastJ { // moment of inertia
 					alpha, lastJ = a, J // store result
 				}
 			}
@@ -223,19 +245,13 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 	// rotate
 	mesh.RotateXOY(-p.Alpha)
 
-	p.OnSectionAxe.Jx, p.OnSectionAxe.Ymax,
-		p.OnSectionAxe.Wx, p.OnSectionAxe.Rx,
-		p.OnSectionAxe.WxPlastic = calc()
-	mesh.RotateXOY90deg()
-	p.OnSectionAxe.Jy, p.OnSectionAxe.Xmax,
-		p.OnSectionAxe.Wy, p.OnSectionAxe.Ry,
-		p.OnSectionAxe.WyPlastic = calc()
-	mesh.RotateXOY90deg()
+	// calculate at the center point and rotate axes
+	p.OnSectionAxe.Calculate(*mesh)
 
 	return
 }
 
-func (p Property) Area(mesh *msh.Msh) (Area float64, Center msh.Point) {
+func Area(mesh msh.Msh) (Area float64, Center msh.Point) {
 	for i := range mesh.Triangles {
 		var (
 			p      = mesh.PointsById(mesh.Triangles[i].PointsId)
@@ -250,7 +266,7 @@ func (p Property) Area(mesh *msh.Msh) (Area float64, Center msh.Point) {
 	return
 }
 
-func (p Property) Jx(mesh *msh.Msh) (j, yMax float64) {
+func Jxx(mesh msh.Msh) (j, yMax float64) {
 	for i := range mesh.Triangles {
 		p := mesh.PointsById(mesh.Triangles[i].PointsId)
 		j += Jx3node(p[0], p[1], p[2])
@@ -266,12 +282,21 @@ func (p Property) Jx(mesh *msh.Msh) (j, yMax float64) {
 	return
 }
 
+func Jxy(mesh msh.Msh) float64 {
+	// TODO :
+	// 	for i := range mesh.Triangles {
+	// 		p := mesh.PointsById(mesh.Triangles[i].PointsId)
+	// 		j += Jx3node(p[0], p[1], p[2])
+	// 	}
+	return -1
+}
+
 func OnAxeX(a, b msh.Point) (c msh.Point) {
 	c.X = a.X + (b.X-a.X)*math.Abs(a.Y/(a.Y-b.Y))
 	return
 }
 
-func (p Property) WxPlastic(mesh *msh.Msh) (w float64) {
+func WxPlastic(mesh msh.Msh) (w float64) {
 	for i := range mesh.Triangles {
 		var (
 			p    = mesh.PointsById(mesh.Triangles[i].PointsId)
