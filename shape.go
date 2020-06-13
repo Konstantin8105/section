@@ -17,6 +17,11 @@ import (
 //	Jo  = integral(r^2,dA) = Jx+Jy  // polar moment of inertia
 //	ko  = sqrt(Jo/A)
 //
+// Moment inertia for move system coordinate to (dx,dy):
+//	Jxx` = Jxx + A*dy^2
+//	Jyy` = Jyy + A*dx^2
+//	Jxy` = Jxy + A*dx*dy
+//
 // Moment inertia for rotate system coordinate on angle O:
 //	Ju  = (Jx+Jy)/2 + (Jx-Jy)/2*cos(2*O) - Jxy*sin(2*O)
 //	Jv  = (Jx+Jy)/2 - (Jx-Jy)/2*cos(2*O) + Jxy*sin(2*O)
@@ -24,7 +29,7 @@ import (
 //	Jo  = Ju+Jv = Jx+Jy
 //
 // Max/min moment inertia:
-//	tan(2*O) = (-Jxy)/((Jx-Jy)/2)
+//	tan(2*O) = -2.0*Jxy/(Jx-Jy)
 //	Jmax,min = (Jx+Jy)/2 +- sqrt(((Jx-Jy)/2)^2+Jxy^2)
 //
 // Matrix of moment inertia:
@@ -36,19 +41,33 @@ type BendingProperty struct {
 	Jyy, Xmax, Wy, Ry, WyPlastic float64
 	Jxy                          float64 // TODO
 	// TODO http://homes.civil.aau.dk/jc/FemteSemester/Beams3D.pdf
+	// TODO https://calcresource.com/moment-of-inertia-tri.html
+	// TODO https://en.wikipedia.org/wiki/Second_moment_of_area
+}
+
+// In principal axes, that are rotated by an angle θ relative 
+// to original centroidal ones x,y, the product of inertia becomes zero.
+func (b *BendingProperty) Alpha() float64 {
+	angle := math.Atan(-2.0*b.Jxy/(b.Jxx-b.Jyy)) / 2.0
+	angle += math.Pi / 2.0
+	if angle > math.Pi {
+		angle -= math.Pi
+	}
+	return angle
 }
 
 func (b *BendingProperty) Calculate(mesh msh.Msh) {
-	A,_ := Area(mesh)
+	A, _ := Area(mesh)
 	calc := func() (j, h, w, r, wpl float64) {
-		j, h = Jxx(mesh)
+		j = Jxx(mesh)
+		h = Ymax(mesh)
 		w = j / h
 		r = math.Sqrt(j / A)
 		wpl = WxPlastic(mesh)
 		return
 	}
 
-	const perp float64 = math.Pi/2.0 // 90 degree
+	const perp float64 = math.Pi / 2.0 // 90 degree
 
 	b.Jxx, b.Ymax, b.Wx, b.Rx, b.WxPlastic = calc()
 	mesh.RotateXOY(perp)
@@ -216,31 +235,7 @@ func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error)
 	p.AtCenterPoint.Calculate(*mesh)
 
 	// calculate at the center point with Jx minimal moment of inertia
-	p.Alpha = func() (alpha float64) {
-		points := make([]msh.Point, len(mesh.Points))
-		copy(points, mesh.Points) // copy
-		defer func() {
-			copy(mesh.Points, points) // repair points
-		}()
-		// find minimimal J between 0 and Pi
-		var (
-			left  = 0.0
-			right = math.Pi
-			lastJ = math.MaxFloat64
-		)
-		// finding
-		for da := math.Pi / 8.0; Eps <= da; da = da / 4.0 { // precision
-			for a := left; a <= right; a += da {
-				copy(mesh.Points, points)          // repair points
-				mesh.RotateXOY(a)                  // rotate
-				if J, _ := Jxx(*mesh); J < lastJ { // moment of inertia
-					alpha, lastJ = a, J // store result
-				}
-			}
-			left, right = alpha-da, alpha+da // new borders
-		}
-		return
-	}()
+	p.Alpha = p.AtCenterPoint.Alpha()
 
 	// rotate
 	mesh.RotateXOY(-p.Alpha)
@@ -266,11 +261,8 @@ func Area(mesh msh.Msh) (Area float64, Center msh.Point) {
 	return
 }
 
-func Jxx(mesh msh.Msh) (j, yMax float64) {
-	for i := range mesh.Triangles {
-		p := mesh.PointsById(mesh.Triangles[i].PointsId)
-		j += Jx3node(p[0], p[1], p[2])
-	}
+func Ymax(mesh msh.Msh) float64 {
+	var yMax float64
 	for i := range mesh.Points {
 		if i == 0 {
 			yMax = math.Abs(mesh.Points[i].Y)
@@ -279,16 +271,60 @@ func Jxx(mesh msh.Msh) (j, yMax float64) {
 			yMax = y
 		}
 	}
-	return
+	return yMax
+}
+
+func Jxx(mesh msh.Msh) float64 {
+	var J float64
+	for i := range mesh.Triangles {
+		p := mesh.PointsById(mesh.Triangles[i].PointsId)
+		J += Jx3node(p[0], p[1], p[2])
+	}
+	return J
 }
 
 func Jxy(mesh msh.Msh) float64 {
-	// TODO :
-	// 	for i := range mesh.Triangles {
-	// 		p := mesh.PointsById(mesh.Triangles[i].PointsId)
-	// 		j += Jx3node(p[0], p[1], p[2])
-	// 	}
-	return -1
+	// See: https://en.wikipedia.org/wiki/Second_moment_of_area
+	// Section: "Any polygon"
+	var J float64
+	for i := range mesh.Triangles {
+		p := mesh.PointsById(mesh.Triangles[i].PointsId)
+		if orientation(p[0], p[1], p[2]) == 2 {
+			p[0], p[1] = p[1], p[0]
+		}
+		var ps [4]msh.Point
+		for i := range p {
+			ps[i] = p[i]
+		}
+		ps[3] = p[0]
+
+		var jxy float64
+		for i := 0; i < 3; i++ {
+			jxy += (ps[i].X*ps[i+1].Y - ps[i+1].X*ps[i].Y) *
+				(ps[i].X*ps[i+1].Y + 2*ps[i].X*ps[i].Y + 2*ps[i+1].X*ps[i+1].Y + ps[i+1].X*ps[i].Y)
+		}
+
+		J += jxy
+	}
+	return 1.0 / 24.0 * J
+}
+
+// To find orientation of ordered triplet (p1, p2, p3).
+// The function returns following values
+// 0 --> p, q and r are colinear
+// 1 --> Clockwise
+// 2 --> Counterclockwise
+func orientation(p1, p2, p3 msh.Point) int {
+	// See 10th slides from following link for derivation
+	// of the formula
+	val := (p2.Y-p1.Y)*(p3.X-p2.X) - (p2.X-p1.X)*(p3.Y-p2.Y)
+	if val == 0 {
+		return 0 // colinear
+	}
+	if val > 0 {
+		return 1
+	}
+	return 2
 }
 
 func OnAxeX(a, b msh.Point) (c msh.Point) {
