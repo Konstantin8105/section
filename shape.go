@@ -36,16 +36,24 @@ import (
 //	[ Jxx -Jxy]
 //	[-Jxy  Jyy]
 //
+// First moment of area:
+//	Sx = integral(y,dA)
+//	Sy = integral(x,dA)
+//
 type BendingProperty struct {
+	// https://en.wikipedia.org/wiki/First_moment_of_area
+	// https://en.wikipedia.org/wiki/Second_moment_of_area
+	// https://en.wikipedia.org/wiki/Section_modulus
 	Jxx, Ymax, Wx, Rx, WxPlastic float64
 	Jyy, Xmax, Wy, Ry, WyPlastic float64
-	Jxy                          float64 // TODO
-	// TODO http://homes.civil.aau.dk/jc/FemteSemester/Beams3D.pdf
-	// TODO https://calcresource.com/moment-of-inertia-tri.html
-	// TODO https://en.wikipedia.org/wiki/Second_moment_of_area
+	Jxy                          float64 // centrifugal moment of inertia
+
+	// TODO
+	// Sx, Sy float64 // first moment of area
+	// TODO : tau_xz = (Vy * Qz) / (Jz * t)
 }
 
-// In principal axes, that are rotated by an angle θ relative 
+// In principal axes, that are rotated by an angle θ relative
 // to original centroidal ones x,y, the product of inertia becomes zero.
 func (b *BendingProperty) Alpha() float64 {
 	angle := math.Atan(-2.0*b.Jxy/(b.Jxx-b.Jyy)) / 2.0
@@ -64,6 +72,7 @@ func (b *BendingProperty) Calculate(mesh msh.Msh) {
 		w = j / h
 		r = math.Sqrt(j / A)
 		wpl = WxPlastic(mesh)
+		// s = Sx(mesh)
 		return
 	}
 
@@ -272,6 +281,12 @@ func Ymax(mesh msh.Msh) float64 {
 		}
 	}
 	return yMax
+}
+
+// first moment of area
+func Sx(mesh msh.Msh) float64 {
+	// panic("implement")
+	return -1 // TODO
 }
 
 func Jxx(mesh msh.Msh) float64 {

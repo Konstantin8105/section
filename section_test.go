@@ -21,7 +21,7 @@ func TestAngle(t *testing.T) {
 	}
 
 	fmt.Fprintf(os.Stdout, "%#v\n", an)
-	fmt.Fprintf(os.Stdout, "%#v\n", pr)
+	fmt.Fprintf(os.Stdout, printJson(pr))
 }
 
 func ExamplePlate() {
@@ -34,23 +34,12 @@ func ExamplePlate() {
 	if err != nil {
 		panic(err)
 	}
-
-	fmt.Fprintf(os.Stdout, "%#v\n", pr)
+	fmt.Fprintf(os.Stdout, printJson(pr))
 
 	// Output:
 }
 
-func ExampleUpn() {
-	upn := section.UPNs[4]
-
-	pr, err := section.Calculate(upn)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Fprintf(os.Stdout, "%s\n", upn)
-	fmt.Fprintf(os.Stdout, "%#v\n", pr)
-
+func printJson(pr *section.Property) string {
 	b, err := json.Marshal(*pr)
 	if err != nil {
 		panic(err)
@@ -60,7 +49,17 @@ func ExampleUpn() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Fprintf(os.Stdout, buf.String())
+	return buf.String()
+}
+
+func ExampleUpn() {
+	upn := section.UPNs[4]
+
+	pr, err := section.Calculate(upn)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprintf(os.Stdout, printJson(pr))
 
 	// Output:
 }
