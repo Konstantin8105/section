@@ -44,13 +44,31 @@ type BendingProperty struct {
 	// https://en.wikipedia.org/wiki/First_moment_of_area
 	// https://en.wikipedia.org/wiki/Second_moment_of_area
 	// https://en.wikipedia.org/wiki/Section_modulus
-	Jxx, Ymax, Wx, Rx, WxPlastic float64
-	Jyy, Xmax, Wy, Ry, WyPlastic float64
+	Jxx, Ymax, Wx, Rx, WxPlastic float64 // bending moments of inertia
+	Jyy, Xmax, Wy, Ry, WyPlastic float64 // bending moments of inertia
 	Jxy                          float64 // centrifugal moment of inertia
+	Jo, Ro                       float64 // polar moment of inertia
 
 	// TODO
 	// Sx, Sy float64 // first moment of area
 	// TODO : tau_xz = (Vy * Qz) / (Jz * t)
+	// TODO : shear_area = (Jz * t) / Qz is maximal on each sections
+	// Example http://www.learneasy.info/MDME/MEMmods/MEM09155A-CAE/050-Shear-in-Bending/shear-in-bending.html: 
+	// I-section
+	//		height = 150
+	//		width  = 100
+	//		tw     = 10
+	//		tf     = 10
+	// 	J = 1.16e7 mm4
+	// section A-A on 30 mm from neutral axe
+	// if V = 25kN, then Q = 86625 mm3 and tau = 18.6MPa
+	//
+	// section B-B on 70 mm from neutral axe
+	// in flange b = 100 mm, tau = 1.5 MPa
+	// in web b = 10 mm, tau = 15 MPa
+	// TODO: check on circle, ring, T-section
+	// See https://engineering.stackexchange.com/questions/7989/shear-area-of-atypical-section
+	// TODO https://www.ae.msstate.edu/tupas/SA2/Course.html
 }
 
 // In principal axes, that are rotated by an angle θ relative
@@ -58,9 +76,6 @@ type BendingProperty struct {
 func (b *BendingProperty) Alpha() float64 {
 	angle := math.Atan(-2.0*b.Jxy/(b.Jxx-b.Jyy)) / 2.0
 	angle += math.Pi / 2.0
-	if angle > math.Pi {
-		angle -= math.Pi
-	}
 	return angle
 }
 
@@ -83,6 +98,8 @@ func (b *BendingProperty) Calculate(mesh msh.Msh) {
 	b.Jyy, b.Xmax, b.Wy, b.Ry, b.WyPlastic = calc()
 	mesh.RotateXOY(-perp)
 	b.Jxy = Jxy(mesh)
+	b.Jo = b.Jxx + b.Jyy
+	b.Ro = math.Sqrt(b.Jo / A)
 }
 
 type Property struct {
