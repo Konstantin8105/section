@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -27,17 +26,17 @@ func printJson(pr *section.Property) string {
 	return buf.String()
 }
 
-func Example() {
-	upn := section.UPNs[4]
-
-	pr, err := section.Calculate(upn)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Fprintf(os.Stdout, "%s\n",printJson(pr))
-
-	// Output:
-}
+// func Example() {
+// 	upn := section.UPNs[4]
+//
+// 	pr, err := section.Calculate(upn)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	fmt.Fprintf(os.Stdout, "%s\n",printJson(pr))
+//
+// 	// Output:
+// }
 
 func Test(t *testing.T) {
 	tcs := []struct {
@@ -174,11 +173,11 @@ func TestUB(t *testing.T) {
 
 				eps := 2.0 / 100.0 // 2%
 				actEps := math.Abs((expect - f) / expect)
-				if eps < actEps  {
+				if eps < actEps {
 					t.Errorf("Not enougn precition for pos %2d: %8.2f != %8.2f. Prec = %5.2f %%",
 						pos, f, expect, actEps*100)
 				}
-				eps = 0.5/100.0 // 0.5%
+				eps = 0.5 / 100.0 // 0.5%
 				if f < expect && eps < actEps {
 					t.Errorf("Value is less on pos %d:  %8.2f <? %8.2f. Prec = %5.2f %%",
 						pos, f, expect, actEps*100)

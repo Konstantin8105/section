@@ -8,7 +8,7 @@ import (
 )
 
 type Geor interface{
-	Geo() string
+	Geo(prec float64) string
 }
 
 ////////////////////////////////////

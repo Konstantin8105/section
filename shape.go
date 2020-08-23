@@ -211,7 +211,7 @@ func J(b, h float64) float64 {
 	return math.Abs(b * pow.E3(h) / 12.0)
 }
 
-func Calculate(g interface{ Geo(prec float64) string }) (p *Property, err error) {
+func Calculate(g Geor) (p *Property, err error) {
 	var mesh *msh.Msh
 	p = new(Property)
 
