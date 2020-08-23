@@ -340,8 +340,15 @@ Plane Surface(36) = {35};
 
 // Rectangle
 //
-//	 |----- h --------|
-//	 ****************** thk
+//	* -
+//	* |
+//	* |
+//	* h
+//	* |
+//	* |
+//	* |
+//	* -
+//	thk
 //
 type Rectangle struct {
 	H   float64 //height
@@ -356,10 +363,10 @@ func (r Rectangle) Geo(prec float64) string {
 	geo += fmt.Sprintf("Lc = %.5f;\n", prec)
 
 	geo += `
-	Point(000) = {+0.0000,+0.0000,+0.0000,Lc};
-	Point(001) = {thk    ,+0.0000,+0.0000,Lc};
-	Point(002) = {+0.0000,h      ,+0.0000,Lc};
-	Point(003) = {thk    ,h      ,+0.0000,Lc};
+	Point(000) = {-thk/2.0,+0.0000,+0.0000,Lc};
+	Point(001) = {+thk/2.0,+0.0000,+0.0000,Lc};
+	Point(002) = {-thk/2.0,h      ,+0.0000,Lc};
+	Point(003) = {+thk/2.0,h      ,+0.0000,Lc};
 	Line(1) = {1, 3};
 	Line(2) = {0, 2};
 	Line(3) = {0, 1};
