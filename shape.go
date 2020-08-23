@@ -53,7 +53,7 @@ type BendingProperty struct {
 	// Sx, Sy float64 // first moment of area
 	// TODO : tau_xz = (Vy * Qz) / (Jz * t)
 	// TODO : shear_area = (Jz * t) / Qz is maximal on each sections
-	// Example http://www.learneasy.info/MDME/MEMmods/MEM09155A-CAE/050-Shear-in-Bending/shear-in-bending.html: 
+	// Example http://www.learneasy.info/MDME/MEMmods/MEM09155A-CAE/050-Shear-in-Bending/shear-in-bending.html:
 	// I-section
 	//		height = 150
 	//		width  = 100
@@ -312,6 +312,9 @@ func Jxx(mesh msh.Msh) float64 {
 		p := mesh.PointsById(mesh.Triangles[i].PointsId)
 		J += Jx3node(p[0], p[1], p[2])
 	}
+	if J < 0 {
+		J = 0.0
+	}
 	return J
 }
 
@@ -337,6 +340,9 @@ func Jxy(mesh msh.Msh) float64 {
 		}
 
 		J += jxy
+	}
+	if J < 0 {
+		J = 0.0
 	}
 	return 1.0 / 24.0 * J
 }
