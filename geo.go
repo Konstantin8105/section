@@ -7,7 +7,7 @@ import (
 	"text/template"
 )
 
-type Geor interface{
+type Geor interface {
 	Geo(prec float64) string
 }
 
@@ -178,9 +178,18 @@ type Isection struct {
 	Name   string
 	H      float64 // height
 	B      float64 // width
-	Tf     float64 //tf
 	Tw     float64 //tw
+	Tf     float64 //tf
 	Radius float64 //r
+}
+
+func GetIsection(name string) (is Isection) {
+	for i := range Isections {
+		if Isections[i].Name == name {
+			return Isections[i]
+		}
+	}
+	panic("cannot found")
 }
 
 var Isections = []Isection{
@@ -342,10 +351,7 @@ Plane Surface(36) = {35};
 //
 //	* -
 //	* |
-//	* |
 //	* h
-//	* |
-//	* |
 //	* |
 //	* -
 //	thk
@@ -373,6 +379,57 @@ func (r Rectangle) Geo(prec float64) string {
 	Line(4) = {2, 3};
 	Line Loop(5) = {1, -4, -2, 3};
 	Plane Surface(6) = {5};
+`
+	return geo
+}
+
+// Tsection
+//
+//	      Thk
+//	       * -
+//	       * |
+//	       * H
+//	       * |
+//	       * -
+//	************** Thk2
+//	|----- L ----|
+//
+type Tsection struct {
+	H   float64 // height
+	Thk float64 // thickness
+
+	L    float64 // length
+	Thk2 float64 // thickness
+}
+
+func (t Tsection) Geo(prec float64) string {
+	// TODO: use text/template
+	var geo string
+	geo += fmt.Sprintf("H    = %.5f;\n", t.H)
+	geo += fmt.Sprintf("Thk  = %.5f;\n", t.Thk)
+	geo += fmt.Sprintf("L    = %.5f;\n", t.L)
+	geo += fmt.Sprintf("Thk2 = %.5f;\n", t.Thk2)
+	geo += fmt.Sprintf("Lc   = %.5f;\n", prec)
+
+	geo += `
+	Point(000) = {-Thk/2.0,+0.0000,+0.0000,Lc};
+	Point(001) = {-Thk/2.0,H      ,+0.0000,Lc};
+	Point(002) = {+Thk/2.0,H      ,+0.0000,Lc};
+	Point(003) = {+Thk/2.0,+0.0000,+0.0000,Lc};
+	Point(004) = {+L/2.0  ,+0.0000,+0.0000,Lc};
+	Point(005) = {+L/2.0  ,-Thk2/2.0,+0.0000,Lc};
+	Point(006) = {-L/2.0  ,-Thk2/2.0,+0.0000,Lc};
+	Point(007) = {-L/2.0  ,+0.0000,+0.0000,Lc};
+	Line(1) = {0, 1};
+	Line(2) = {1, 2};
+	Line(3) = {2, 3};
+	Line(4) = {3, 4};
+	Line(5) = {4, 5};
+	Line(6) = {5, 6};
+	Line(7) = {6, 7};
+	Line(8) = {7, 0};
+	Line Loop(10) = {1,2,3,4,5,6,7,8};
+	Plane Surface(20) = {10};
 `
 	return geo
 }
@@ -425,6 +482,20 @@ var UPNs = []UPN{ // TODO: check
 	{"UPN240 DIN 1025-5-1994", 0.2400, 0.0850, 0.0130, 0.0095, 0.0130, 0.0065},
 	{"UPN300 DIN 1025-5-1994", 0.3000, 0.1000, 0.0160, 0.0100, 0.0160, 0.0080},
 	{"UPN400 DIN 1025-5-1994", 0.4000, 0.1100, 0.0180, 0.0140, 0.0180, 0.0090},
+}
+
+func init() {
+	// initialize double channels
+	for _, upn := range UPNs {
+		var is Isection
+		is.Name = upn.Name + ",Double"
+		is.H = upn.H
+		is.B = upn.B * 2.0
+		is.Tf = upn.Tf
+		is.Tw = upn.Tw * 2.0
+		is.Radius = upn.Radius1
+		Isections = append(Isections, is)
+	}
 }
 
 func (u UPN) Geo(prec float64) string {
