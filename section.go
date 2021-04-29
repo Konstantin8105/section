@@ -11,6 +11,33 @@ type Geor interface {
 	Geo(prec float64) string
 }
 
+type Type int32
+
+const (
+	AngleType Type = 1 + iota
+	IsectionType
+	UPNType
+)
+
+func Get(name string) (t Type, _ Geor, err error) {
+	for i := range Angles {
+		if Angles[i].Name == name {
+			return AngleType, Angles[i], nil
+		}
+	}
+	for i := range Isections {
+		if Isections[i].Name == name {
+			return IsectionType, Isections[i], nil
+		}
+	}
+	for i := range UPNs {
+		if UPNs[i].Name == name {
+			return UPNType, UPNs[i], nil
+		}
+	}
+	return 0, nil, fmt.Errorf("Section with name: `%s` is not found", name)
+}
+
 ////////////////////////////////////
 ////////////////////////////////////
 ////////// Shape: ANGLE ////////////
@@ -181,15 +208,6 @@ type Isection struct {
 	Tw     float64 //tw
 	Tf     float64 //tf
 	Radius float64 //r
-}
-
-func GetIsection(name string) (is Isection) {
-	for i := range Isections {
-		if Isections[i].Name == name {
-			return Isections[i]
-		}
-	}
-	panic("cannot found")
 }
 
 var Isections = []Isection{
