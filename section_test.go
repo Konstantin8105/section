@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -12,6 +13,17 @@ import (
 	"github.com/Konstantin8105/msh"
 	"github.com/Konstantin8105/section"
 )
+
+func ExampleGet() {
+	g, err := section.Get("20B1-ASCM")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprintf(os.Stdout, "Type:%T\nDescription:%#v\n", g, g)
+	// Output:
+	// Type:section.Isection
+	// Description:section.Isection{Name:"20B1-ASCM", H:0.2, B:0.1, Tw:0.0055, Tf:0.008, Radius:0.011}
+}
 
 func printJson(pr *section.Property) string {
 	b, err := json.Marshal(*pr)

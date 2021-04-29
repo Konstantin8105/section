@@ -11,31 +11,23 @@ type Geor interface {
 	Geo(prec float64) string
 }
 
-type Type int32
-
-const (
-	AngleType Type = 1 + iota
-	IsectionType
-	UPNType
-)
-
-func Get(name string) (t Type, _ Geor, err error) {
+func Get(name string) (_ Geor, err error) {
 	for i := range Angles {
 		if Angles[i].Name == name {
-			return AngleType, Angles[i], nil
+			return Angles[i], nil
 		}
 	}
 	for i := range Isections {
 		if Isections[i].Name == name {
-			return IsectionType, Isections[i], nil
+			return Isections[i], nil
 		}
 	}
 	for i := range UPNs {
 		if UPNs[i].Name == name {
-			return UPNType, UPNs[i], nil
+			return UPNs[i], nil
 		}
 	}
-	return 0, nil, fmt.Errorf("Section with name: `%s` is not found", name)
+	return nil, fmt.Errorf("Section with name: `%s` is not found", name)
 }
 
 ////////////////////////////////////
