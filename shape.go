@@ -94,9 +94,9 @@ func (b *BendingProperty) Calculate(mesh msh.Msh) {
 	const perp float64 = math.Pi / 2.0 // 90 degree
 
 	b.Jxx, b.Ymax, b.Wx, b.Rx, b.WxPlastic = calc()
-	mesh.RotateXOY(perp)
+	RotateXOY(&mesh, perp)
 	b.Jyy, b.Xmax, b.Wy, b.Ry, b.WyPlastic = calc()
-	mesh.RotateXOY(-perp)
+	RotateXOY(&mesh, -perp)
 	b.Jxy = Jxy(mesh)
 	b.Jo = b.Jxx + b.Jyy
 	b.Ro = math.Sqrt(b.Jo / A)
@@ -132,76 +132,76 @@ const (
 )
 
 // Area3node return area of triangle by coordinates
-func Area3node(na, nb, nc msh.Point) float64 {
+func Area3node(na, nb, nc msh.Node) float64 {
 	// https://en.wikipedia.org/wiki/Triangle#Computing_the_area_of_a_triangle
 	// Using Heron's formula
 	var (
-		a = math.Sqrt(pow.E2(na.X-nb.X) + pow.E2(na.Y-nb.Y) + pow.E2(na.Z-nb.Z))
-		b = math.Sqrt(pow.E2(nc.X-nb.X) + pow.E2(nc.Y-nb.Y) + pow.E2(nc.Z-nb.Z))
-		c = math.Sqrt(pow.E2(nc.X-na.X) + pow.E2(nc.Y-na.Y) + pow.E2(na.Z-nc.Z))
+		a = math.Sqrt(pow.E2(na.Coord[0]-nb.Coord[0]) + pow.E2(na.Coord[1]-nb.Coord[1]) + pow.E2(na.Coord[2]-nb.Coord[2]))
+		b = math.Sqrt(pow.E2(nc.Coord[0]-nb.Coord[0]) + pow.E2(nc.Coord[1]-nb.Coord[1]) + pow.E2(nc.Coord[2]-nb.Coord[2]))
+		c = math.Sqrt(pow.E2(nc.Coord[0]-na.Coord[0]) + pow.E2(nc.Coord[1]-na.Coord[1]) + pow.E2(na.Coord[2]-nc.Coord[2]))
 		s = (a + b + c) / 2.0 // semiperimeter
 	)
 	return math.Sqrt(s * (s - a) * (s - b) * (s - c))
 }
 
 // The centroid of a triangle is the point of intersection of its medians
-func Center3node(na, nb, nc msh.Point) (center msh.Point) {
+func Center3node(na, nb, nc msh.Node) (center msh.Node) {
 	// https://en.wikipedia.org/wiki/Centroid#Of_a_triangle
-	center.X = (na.X + nb.X + nc.X) / 3.0
-	center.Y = (na.Y + nb.Y + nc.Y) / 3.0
-	center.Z = (na.Z + nb.Z + nc.Z) / 3.0
+	center.Coord[0] = (na.Coord[0] + nb.Coord[0] + nc.Coord[0]) / 3.0
+	center.Coord[1] = (na.Coord[1] + nb.Coord[1] + nc.Coord[1]) / 3.0
+	center.Coord[2] = (na.Coord[2] + nb.Coord[2] + nc.Coord[2]) / 3.0
 	return
 }
 
-func SortByY(na, nb, nc msh.Point) (_, _, _ msh.Point) {
+func SortByY(na, nb, nc msh.Node) (_, _, _ msh.Node) {
 	// sorting point by Y
-	// Expect: na.Y <= nb.Y <= nc.Y
-	if na.Y <= nb.Y {
+	// Expect: na.Coord[1] <= nb.Coord[1] <= nc.Y
+	if na.Coord[1] <= nb.Coord[1] {
 		// do nothing
 	} else {
 		na, nb = nb, na // swap
 	}
-	// now : na.Y <= nb.Y and nc is ?
+	// now : na.Coord[1] <= nb.Coord[1] and nc is ?
 	switch {
-	case nb.Y <= nc.Y:
+	case nb.Coord[1] <= nc.Coord[1]:
 		// do nothing
-	case na.Y <= nc.Y && nc.Y <= nb.Y:
+	case na.Coord[1] <= nc.Coord[1] && nc.Coord[1] <= nb.Coord[1]:
 		nb, nc = nc, nb // swap
-	case nc.Y <= na.Y:
+	case nc.Coord[1] <= na.Coord[1]:
 		na, nb, nc = nc, na, nb // swap
 	}
 
 	return na, nb, nc
 }
 
-func Jx3node(na, nb, nc msh.Point) (j float64) {
+func Jx3node(na, nb, nc msh.Node) (j float64) {
 	// calculate of moment of inertia from center point
 	defer func() {
 		c := Center3node(na, nb, nc)
 		a := Area3node(na, nb, nc)
-		j += a * pow.E2(c.Y)
+		j += a * pow.E2(c.Coord[1])
 	}()
 
 	switch {
-	case na.Y == nb.Y:
-		return J(na.X-nb.X, nc.Y-na.Y)
-	case na.Y == nc.Y:
-		return J(na.X-nc.X, nb.Y-na.Y)
-	case nb.Y == nc.Y:
-		return J(nb.X-nc.X, na.Y-nb.Y)
+	case na.Coord[1] == nb.Coord[1]:
+		return J(na.Coord[0]-nb.Coord[0], nc.Coord[1]-na.Coord[1])
+	case na.Coord[1] == nc.Coord[1]:
+		return J(na.Coord[0]-nc.Coord[0], nb.Coord[1]-na.Coord[1])
+	case nb.Coord[1] == nc.Coord[1]:
+		return J(nb.Coord[0]-nc.Coord[0], na.Coord[1]-nb.Coord[1])
 	}
 
 	// sorting point by Y
-	// na.Y < nb.Y < nc.Y
+	// na.Coord[1] < nb.Coord[1] < nc.Y
 	na, nb, nc = SortByY(na, nb, nc)
 
 	// find temp point X,Y between point `a` and `c`
 	var temp = nb
-	temp.X = na.X + (nc.X-na.X)*(nb.Y-na.Y)/(nc.Y-na.Y)
-	temp.Y = nb.Y
+	temp.Coord[0] = na.Coord[0] + (nc.Coord[0]-na.Coord[0])*(nb.Coord[1]-na.Coord[1])/(nc.Coord[1]-na.Coord[1])
+	temp.Coord[1] = nb.Coord[1]
 
 	// calculate moment of inertia for 2 triangles
-	return J(nc.Y-nb.Y, nb.X-temp.X) + J(nb.Y-na.Y, nb.X-temp.X)
+	return J(nc.Coord[1]-nb.Coord[1], nb.Coord[0]-temp.Coord[0]) + J(nb.Coord[1]-na.Coord[1], nb.Coord[0]-temp.Coord[0])
 }
 
 // J return moment inertia of triangle:
@@ -218,7 +218,7 @@ func Calculate(g Geor) (p *Property, err error) {
 	{ // calculate area and choose precition
 		lastArea := 0.0
 		var prec float64 = 0.1 // TODO: auto finding
-		var center msh.Point
+		var center msh.Node
 		for iter := 0; iter < IterMax; iter++ {
 			prec /= 2.0
 			// choose precition by area
@@ -240,13 +240,13 @@ func Calculate(g Geor) (p *Property, err error) {
 			}
 			lastArea = p.A
 		}
-		p.X = center.X
-		p.Y = center.Y
+		p.X = center.Coord[0]
+		p.Y = center.Coord[1]
 	}
 
-	for i, point := range mesh.Points {
-		if point.Z != 0 {
-			err = fmt.Errorf("Coordinate Z of point %d is not zero: %f", i, point.Z)
+	for i, point := range mesh.Nodes {
+		if point.Coord[2] != 0 {
+			err = fmt.Errorf("Coordinate Z of point %d is not zero: %f", i, point.Coord[2])
 			return
 		}
 	}
@@ -255,7 +255,7 @@ func Calculate(g Geor) (p *Property, err error) {
 	p.AtBasePoint.Calculate(*mesh)
 
 	// calculate at the center point
-	mesh.MoveXOY(-p.X, -p.Y)
+	MoveXOY(mesh, -p.X, -p.Y)
 
 	// calculate at the center point
 	p.AtCenterPoint.Calculate(*mesh)
@@ -264,7 +264,7 @@ func Calculate(g Geor) (p *Property, err error) {
 	p.Alpha = p.AtCenterPoint.Alpha()
 
 	// rotate
-	mesh.RotateXOY(-p.Alpha)
+	RotateXOY(mesh, -p.Alpha)
 
 	// calculate at the center point and rotate axes
 	p.OnSectionAxe.Calculate(*mesh)
@@ -272,15 +272,38 @@ func Calculate(g Geor) (p *Property, err error) {
 	return
 }
 
-func Area(mesh msh.Msh) (Area float64, Center msh.Point) {
-	for i := range mesh.Triangles {
+func RotateXOY(m *msh.Msh, a float64) {
+	for i := range m.Nodes {
+		x, y := m.Nodes[i].Coord[0], m.Nodes[i].Coord[1]
+		ampl := math.Sqrt(pow.E2(x) + pow.E2(y))
+		angle := math.Atan2(y, x) + a
+		m.Nodes[i].Coord[0] = ampl * math.Cos(angle)
+		m.Nodes[i].Coord[1] = ampl * math.Sin(angle)
+	}
+}
+
+func MoveXOY(m *msh.Msh, x, y float64) {
+	for i := range m.Nodes {
+		m.Nodes[i].Coord[0] += x
+		m.Nodes[i].Coord[1] += y
+	}
+}
+
+func Area(mesh msh.Msh) (Area float64, Center msh.Node) {
+	for i := range mesh.Elements {
+		if mesh.Elements[i].EType != msh.Triangle {
+			continue
+		}
 		var (
-			p      = mesh.PointsById(mesh.Triangles[i].PointsId)
-			area   = Area3node(p[0], p[1], p[2])
-			center = Center3node(p[0], p[1], p[2])
+			ns     = mesh.Elements[i].NodeId
+			p0     = mesh.Nodes[mesh.GetNode(ns[0])]
+			p1     = mesh.Nodes[mesh.GetNode(ns[1])]
+			p2     = mesh.Nodes[mesh.GetNode(ns[2])]
+			area   = Area3node(p0, p1, p2)
+			center = Center3node(p0, p1, p2)
 		)
-		Center.X = (area*center.X + Area*Center.X) / (Area + area)
-		Center.Y = (area*center.Y + Area*Center.Y) / (Area + area)
+		Center.Coord[0] = (area*center.Coord[0] + Area*Center.Coord[0]) / (Area + area)
+		Center.Coord[1] = (area*center.Coord[1] + Area*Center.Coord[1]) / (Area + area)
 		Area += area
 	}
 
@@ -289,11 +312,11 @@ func Area(mesh msh.Msh) (Area float64, Center msh.Point) {
 
 func Ymax(mesh msh.Msh) float64 {
 	var yMax float64
-	for i := range mesh.Points {
+	for i := range mesh.Nodes {
 		if i == 0 {
-			yMax = math.Abs(mesh.Points[i].Y)
+			yMax = math.Abs(mesh.Nodes[i].Coord[1])
 		}
-		if y := math.Abs(mesh.Points[i].Y); yMax < y {
+		if y := math.Abs(mesh.Nodes[i].Coord[1]); yMax < y {
 			yMax = y
 		}
 	}
@@ -308,9 +331,17 @@ func Sx(mesh msh.Msh) float64 {
 
 func Jxx(mesh msh.Msh) float64 {
 	var J float64
-	for i := range mesh.Triangles {
-		p := mesh.PointsById(mesh.Triangles[i].PointsId)
-		J += Jx3node(p[0], p[1], p[2])
+	for i := range mesh.Elements {
+		if mesh.Elements[i].EType != msh.Triangle {
+			continue
+		}
+		var (
+			ns = mesh.Elements[i].NodeId
+			p0 = mesh.Nodes[mesh.GetNode(ns[0])]
+			p1 = mesh.Nodes[mesh.GetNode(ns[1])]
+			p2 = mesh.Nodes[mesh.GetNode(ns[2])]
+		)
+		J += Jx3node(p0, p1, p2)
 	}
 	if J < 0 {
 		J = 0.0
@@ -322,12 +353,20 @@ func Jxy(mesh msh.Msh) float64 {
 	// See: https://en.wikipedia.org/wiki/Second_moment_of_area
 	// Section: "Any polygon"
 	var J float64
-	for i := range mesh.Triangles {
-		p := mesh.PointsById(mesh.Triangles[i].PointsId)
+	for i := range mesh.Elements {
+		if mesh.Elements[i].EType != msh.Triangle {
+			continue
+		}
+		ns := mesh.Elements[i].NodeId
+		p := [3]msh.Node{
+			mesh.Nodes[mesh.GetNode(ns[0])],
+			mesh.Nodes[mesh.GetNode(ns[1])],
+			mesh.Nodes[mesh.GetNode(ns[2])],
+		}
 		if orientation(p[0], p[1], p[2]) == 2 {
 			p[0], p[1] = p[1], p[0]
 		}
-		var ps [4]msh.Point
+		var ps [4]msh.Node
 		for i := range p {
 			ps[i] = p[i]
 		}
@@ -335,8 +374,8 @@ func Jxy(mesh msh.Msh) float64 {
 
 		var jxy float64
 		for i := 0; i < 3; i++ {
-			jxy += (ps[i].X*ps[i+1].Y - ps[i+1].X*ps[i].Y) *
-				(ps[i].X*ps[i+1].Y + 2*ps[i].X*ps[i].Y + 2*ps[i+1].X*ps[i+1].Y + ps[i+1].X*ps[i].Y)
+			jxy += (ps[i].Coord[0]*ps[i+1].Coord[1] - ps[i+1].Coord[0]*ps[i].Coord[1]) *
+				(ps[i].Coord[0]*ps[i+1].Coord[1] + 2*ps[i].Coord[0]*ps[i].Coord[1] + 2*ps[i+1].Coord[0]*ps[i+1].Coord[1] + ps[i+1].Coord[0]*ps[i].Coord[1])
 		}
 
 		J += jxy
@@ -352,10 +391,10 @@ func Jxy(mesh msh.Msh) float64 {
 // 0 --> p, q and r are colinear
 // 1 --> Clockwise
 // 2 --> Counterclockwise
-func orientation(p1, p2, p3 msh.Point) int {
+func orientation(p1, p2, p3 msh.Node) int {
 	// See 10th slides from following link for derivation
 	// of the formula
-	val := (p2.Y-p1.Y)*(p3.X-p2.X) - (p2.X-p1.X)*(p3.Y-p2.Y)
+	val := (p2.Coord[1]-p1.Coord[1])*(p3.Coord[0]-p2.Coord[0]) - (p2.Coord[0]-p1.Coord[0])*(p3.Coord[1]-p2.Coord[1])
 	if val == 0 {
 		return 0 // colinear
 	}
@@ -365,22 +404,29 @@ func orientation(p1, p2, p3 msh.Point) int {
 	return 2
 }
 
-func OnAxeX(a, b msh.Point) (c msh.Point) {
-	c.X = a.X + (b.X-a.X)*math.Abs(a.Y/(a.Y-b.Y))
+func OnAxeX(a, b msh.Node) (c msh.Node) {
+	c.Coord[0] = a.Coord[0] + (b.Coord[0]-a.Coord[0])*math.Abs(a.Coord[1]/(a.Coord[1]-b.Coord[1]))
 	return
 }
 
 func WxPlastic(mesh msh.Msh) (w float64) {
-	for i := range mesh.Triangles {
+	for i := range mesh.Elements {
+		if mesh.Elements[i].EType != msh.Triangle {
+			continue
+		}
 		var (
-			p    = mesh.PointsById(mesh.Triangles[i].PointsId)
+			ns = mesh.Elements[i].NodeId
+			p  = [3]msh.Node{mesh.Nodes[mesh.GetNode(ns[0])],
+				mesh.Nodes[mesh.GetNode(ns[1])],
+				mesh.Nodes[mesh.GetNode(ns[2])],
+			}
 			sign [3]bool
 		)
 		p[0], p[1], p[2] = SortByY(p[0], p[1], p[2])
 		for i := range p {
-			sign[i] = math.Signbit(p[i].Y)
+			sign[i] = math.Signbit(p[i].Coord[1])
 		}
-		var tr [][3]msh.Point
+		var tr [][3]msh.Node
 		switch {
 		case sign[0] == sign[1] && sign[1] == sign[2]:
 			tr = append(tr, p)
@@ -393,9 +439,9 @@ func WxPlastic(mesh msh.Msh) (w float64) {
 			p02 := OnAxeX(p[0], p[2])
 			// triangles:
 			tr = append(tr,
-				[3]msh.Point{p[0], p01, p02},
-				[3]msh.Point{p[1], p01, p02},
-				[3]msh.Point{p[1], p02, p[2]},
+				[3]msh.Node{p[0], p01, p02},
+				[3]msh.Node{p[1], p01, p02},
+				[3]msh.Node{p[1], p02, p[2]},
 			)
 
 		case sign[0] == sign[1] && sign[1] != sign[2]:
@@ -406,16 +452,16 @@ func WxPlastic(mesh msh.Msh) (w float64) {
 			p21 := OnAxeX(p[2], p[1])
 			// triangles:
 			tr = append(tr,
-				[3]msh.Point{p[2], p20, p21},
-				[3]msh.Point{p[1], p21, p20},
-				[3]msh.Point{p[0], p20, p[1]},
+				[3]msh.Node{p[2], p20, p21},
+				[3]msh.Node{p[1], p21, p20},
+				[3]msh.Node{p[0], p20, p[1]},
 			)
 		}
 		// calculate for one triangle
 		for _, n := range tr {
 			area := Area3node(n[0], n[1], n[2])
 			center := Center3node(n[0], n[1], n[2])
-			w += area * math.Abs(center.Y)
+			w += area * math.Abs(center.Coord[1])
 		}
 	}
 	return
