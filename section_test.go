@@ -211,3 +211,18 @@ func TestUB(t *testing.T) {
 		})
 	}
 }
+
+func ExampleC20() {
+	c20, err := section.Get("Швеллер 20У ГОСТ 8240")
+	if err != nil {
+		panic(err)
+	}
+	pr, err := section.Calculate(c20)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprintf(os.Stdout, "Area = %.12e", pr.A)
+
+	// Output:
+	// Area = 2.321310090657e-03
+}
