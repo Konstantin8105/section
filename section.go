@@ -27,26 +27,29 @@ func Get(name string) (_ Geor, err error) {
 			return UPNs[i], nil
 		}
 	}
+	for i := range Rectangles {
+		if Rectangles[i].Name == name {
+			return Rectangles[i], nil
+		}
+	}
 	return nil, fmt.Errorf("Section with name: `%s` is not found", name)
 }
 
-////////////////////////////////////
-////////////////////////////////////
-////////// Shape: ANGLE ////////////
-////////////////////////////////////
-////////////////////////////////////
-//    SCHEMA
+// //////////////////////////////////
+// //////////////////////////////////
+// //////// Shape: ANGLE ////////////
+// //////////////////////////////////
+// //////////////////////////////////
 //
-//  --*r2
-//  | *
-//  | *thk
-//  b *
-//  | *r1
-//  --*********r2
-//    |--b----|
+//	  SCHEMA
 //
-//
-//
+//	--*r2
+//	| *
+//	| *thk
+//	b *
+//	| *r1
+//	--*********r2
+//	  |--b----|
 type Angle struct {
 	Name    string
 	Width   float64 //b
@@ -127,13 +130,12 @@ func (a Angle) Geo(prec float64) string {
 
 // TODO: it is tube ???
 
-//    SCHEMA
+// SCHEMA
 //
-//       **   DIA
-//     *    *
-//     *    * THK
-//       **
-//
+//	  **   DIA
+//	*    *
+//	*    * THK
+//	  **
 type Cylinder struct {
 	Od  float64
 	Thk float64 //thk
@@ -359,16 +361,16 @@ Plane Surface(36) = {35};
 
 // Rectangle
 //
-//	* -
-//	* |
-//	* h
-//	* |
-//	* -
-//	thk
-//
+//	--*
+//	| *
+//	h *
+//	| *
+//	--*
+//	  thk
 type Rectangle struct {
-	H   float64 //height
-	Thk float64 //thickness
+	Name string
+	H    float64 //height
+	Thk  float64 //thickness
 }
 
 func (r Rectangle) Geo(prec float64) string {
@@ -393,6 +395,13 @@ func (r Rectangle) Geo(prec float64) string {
 	return geo
 }
 
+var Rectangles = []Rectangle{
+	{"Plate 50x5", 0.050, 0.005},
+	{"Plate 60x6", 0.060, 0.006},
+	{"Plate 75x7", 0.075, 0.007},
+	{"Plate 100x10", 0.100, 0.010},
+}
+
 // Tsection
 //
 //	      Thk
@@ -403,7 +412,6 @@ func (r Rectangle) Geo(prec float64) string {
 //	       * -
 //	************** Thk2
 //	|----- L ----|
-//
 type Tsection struct {
 	H   float64 // height
 	Thk float64 // thickness
@@ -445,18 +453,19 @@ func (t Tsection) Geo(prec float64) string {
 }
 
 // UPN
-//	 --*********r2
-//	 | *r1   tf
-//	 | *
-//	 | *
-//	 | *
-//	 h *tw
-//	 | *
-//	 | *
-//	 | *
-//	 | *r1   tf
-//	 --*********r2
-//	   |--b----|
+//
+//	--*********r2
+//	| *r1   tf
+//	| *
+//	| *
+//	| *
+//	h *tw
+//	| *
+//	| *
+//	| *
+//	| *r1   tf
+//	--*********r2
+//	  |--b----|
 type UPN struct {
 	Name    string
 	H       float64 //h height
