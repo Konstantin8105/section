@@ -9,6 +9,7 @@ import (
 
 type Geor interface {
 	Geo(prec float64) string
+	GetName() string
 }
 
 func Get(name string) (_ Geor, err error) {
@@ -56,6 +57,10 @@ type Angle struct {
 	Thk     float64 //Thickness
 	Radius1 float64 //r1
 	Radius2 float64 //r2
+}
+
+func (a Angle) GetName() string {
+	return a.Name
 }
 
 var Angles = []Angle{
@@ -137,8 +142,13 @@ func (a Angle) Geo(prec float64) string {
 //	*    * THK
 //	  **
 type Cylinder struct {
-	Od  float64
-	Thk float64 //thk
+	Name string
+	Od   float64
+	Thk  float64 //thk
+}
+
+func (c Cylinder) GetName() string {
+	return c.Name
 }
 
 func (c Cylinder) Geo(prec float64) string {
@@ -202,6 +212,10 @@ type Isection struct {
 	Tw     float64 //tw
 	Tf     float64 //tf
 	Radius float64 //r
+}
+
+func (i Isection) GetName() string {
+	return i.Name
 }
 
 var Isections = []Isection{
@@ -373,6 +387,10 @@ type Rectangle struct {
 	Thk  float64 //thickness
 }
 
+func (r Rectangle) GetName() string {
+	return r.Name
+}
+
 func (r Rectangle) Geo(prec float64) string {
 	// TODO: use text/template
 	var geo string
@@ -413,11 +431,17 @@ var Rectangles = []Rectangle{
 //	************** Thk2
 //	|----- L ----|
 type Tsection struct {
+	Name string
+
 	H   float64 // height
 	Thk float64 // thickness
 
 	L    float64 // length
 	Thk2 float64 // thickness
+}
+
+func (t Tsection) GetName() string {
+	return t.Name
 }
 
 func (t Tsection) Geo(prec float64) string {
@@ -476,6 +500,10 @@ type UPN struct {
 	Radius2 float64 //r2
 
 	// TODO: angle of flange
+}
+
+func (u UPN) GetName() string {
+	return u.Name
 }
 
 func (u UPN) String() string {
