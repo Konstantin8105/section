@@ -37,25 +37,27 @@ func GetProperty(g Geor) (p Property, err error) {
 	return
 }
 
-func Get(name string) (_ Geor, err error) {
+func GetList() (list []Geor) {
 	for i := range Angles {
-		if Angles[i].Name == name {
-			return Angles[i], nil
-		}
+		list = append(list, Angles[i])
 	}
 	for i := range Isections {
-		if Isections[i].Name == name {
-			return Isections[i], nil
-		}
+		list = append(list, Isections[i])
 	}
 	for i := range UPNs {
-		if UPNs[i].Name == name {
-			return UPNs[i], nil
-		}
+		list = append(list, UPNs[i])
 	}
 	for i := range Rectangles {
-		if Rectangles[i].Name == name {
-			return Rectangles[i], nil
+		list = append(list, Rectangles[i])
+	}
+	return
+}
+
+func Get(name string) (_ Geor, err error) {
+	list := GetList()
+	for i := range list {
+		if name == list[i].GetName() {
+			return list[i], nil
 		}
 	}
 	return nil, fmt.Errorf("Section with name: `%s` is not found", name)

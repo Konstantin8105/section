@@ -272,3 +272,12 @@ func Benchmark(b *testing.B) {
 		}
 	})
 }
+
+func TestList(t *testing.T){
+	list := section.GetList()
+	var buf bytes.Buffer
+	for i := range list {
+		fmt.Fprintf(&buf, "%s\n", list[i].GetName())
+	}
+	compare.Test(t, ".test.list", buf.Bytes())
+}
