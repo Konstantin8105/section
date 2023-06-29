@@ -6,8 +6,6 @@ import (
 	"sync"
 	"text/tabwriter"
 	"text/template"
-
-	"github.com/Konstantin8105/efmt"
 )
 
 type Geor interface {
@@ -88,7 +86,10 @@ type Angle struct {
 
 func (a Angle) GetName() string {
 	if a.Name == "" {
-		return fmt.Sprintf("L%sx%s", efmt.Sprint(a.Width), efmt.Sprint(a.Thk))
+		return fmt.Sprintf("L%.2fx%.2f",
+			a.Width*1e3,
+			a.Thk*1e3,
+		)
 	}
 	return a.Name
 }
@@ -179,7 +180,10 @@ type Cylinder struct {
 
 func (c Cylinder) GetName() string {
 	if c.Name == "" {
-		return fmt.Sprintf("DIA%sx%s", efmt.Sprint(c.Od), efmt.Sprint(c.Thk))
+		return fmt.Sprintf("DIA%.2fx%.2f",
+			1e3*c.Od,
+			1e3*c.Thk,
+		)
 	}
 	return c.Name
 }
@@ -249,11 +253,11 @@ type Isection struct {
 
 func (i Isection) GetName() string {
 	if i.Name == "" {
-		return fmt.Sprintf("WPG H%s x B%s x Tf%s x Tw%s",
-			efmt.Sprint(i.H),
-			efmt.Sprint(i.B),
-			efmt.Sprint(i.Tf),
-			efmt.Sprint(i.Tw),
+		return fmt.Sprintf("WPG H%.2f x B%.2f x Tf%.2f x Tw%.2f",
+			1e3*i.H,
+			1e3*i.B,
+			1e3*i.Tf,
+			1e3*i.Tw,
 		)
 	}
 	return i.Name
@@ -430,9 +434,9 @@ type Rectangle struct {
 
 func (r Rectangle) GetName() string {
 	if r.Name == "" {
-		return fmt.Sprintf("Rectangel H%s x Thk%s",
-			efmt.Sprint(r.H),
-			efmt.Sprint(r.Thk),
+		return fmt.Sprintf("Rectangel H%.2f x Thk%.2f",
+			1e3*r.H,
+			1e3*r.Thk,
 		)
 	}
 	return r.Name
@@ -489,11 +493,11 @@ type Tsection struct {
 
 func (t Tsection) GetName() string {
 	if t.Name == "" {
-		return fmt.Sprintf("Tsection H%s x L%s x Thk%s x Thk2%s",
-			efmt.Sprint(t.H),
-			efmt.Sprint(t.L),
-			efmt.Sprint(t.Thk),
-			efmt.Sprint(t.Thk2),
+		return fmt.Sprintf("Tsection H%.2f x L%.2f x Thk%.2f x Thk2%.2f",
+			1e3*t.H,
+			1e3*t.L,
+			1e3*t.Thk,
+			1e3*t.Thk2,
 		)
 	}
 	return t.Name
@@ -559,11 +563,11 @@ type UPN struct {
 
 func (u UPN) GetName() string {
 	if u.Name == "" {
-		return fmt.Sprintf("UPN H%s x B%s x Tf%s x Tw%s",
-			efmt.Sprint(u.H),
-			efmt.Sprint(u.B),
-			efmt.Sprint(u.Tf),
-			efmt.Sprint(u.Tw),
+		return fmt.Sprintf("UPN H%.2f x B%.2f x Tf%.2f x Tw%.2f",
+			1e3*u.H,
+			1e3*u.B,
+			1e3*u.Tf,
+			1e3*u.Tw,
 		)
 	}
 	return u.Name
