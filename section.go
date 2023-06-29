@@ -6,6 +6,8 @@ import (
 	"sync"
 	"text/tabwriter"
 	"text/template"
+
+	"github.com/Konstantin8105/efmt"
 )
 
 type Geor interface {
@@ -21,7 +23,7 @@ var (
 func GetProperty(g Geor) (p Property, err error) {
 	// stored data
 	for i := range ps {
-		if ps[i].Name == g.GetName(){
+		if ps[i].Name == g.GetName() {
 			pc := ps[i] // copy
 			return pc, nil
 		}
@@ -85,6 +87,9 @@ type Angle struct {
 }
 
 func (a Angle) GetName() string {
+	if a.Name == "" {
+		return fmt.Sprintf("L%sx%s", efmt.Sprint(a.Width), efmt.Sprint(a.Thk))
+	}
 	return a.Name
 }
 
@@ -173,6 +178,9 @@ type Cylinder struct {
 }
 
 func (c Cylinder) GetName() string {
+	if c.Name == "" {
+		return fmt.Sprintf("DIA%sx%s", efmt.Sprint(c.Od), efmt.Sprint(c.Thk))
+	}
 	return c.Name
 }
 
@@ -240,6 +248,14 @@ type Isection struct {
 }
 
 func (i Isection) GetName() string {
+	if i.Name == "" {
+		return fmt.Sprintf("WPG H%s x B%s x Tf%s x Tw%s",
+			efmt.Sprint(i.H),
+			efmt.Sprint(i.B),
+			efmt.Sprint(i.Tf),
+			efmt.Sprint(i.Tw),
+		)
+	}
 	return i.Name
 }
 
@@ -413,6 +429,12 @@ type Rectangle struct {
 }
 
 func (r Rectangle) GetName() string {
+	if r.Name == "" {
+		return fmt.Sprintf("Rectangel H%s x Thk%s",
+			efmt.Sprint(r.H),
+			efmt.Sprint(r.Thk),
+		)
+	}
 	return r.Name
 }
 
@@ -466,6 +488,14 @@ type Tsection struct {
 }
 
 func (t Tsection) GetName() string {
+	if t.Name == "" {
+		return fmt.Sprintf("Tsection H%s x L%s x Thk%s x Thk2%s",
+			efmt.Sprint(t.H),
+			efmt.Sprint(t.L),
+			efmt.Sprint(t.Thk),
+			efmt.Sprint(t.Thk2),
+		)
+	}
 	return t.Name
 }
 
@@ -528,6 +558,14 @@ type UPN struct {
 }
 
 func (u UPN) GetName() string {
+	if u.Name == "" {
+		return fmt.Sprintf("UPN H%s x B%s x Tf%s x Tw%s",
+			efmt.Sprint(u.H),
+			efmt.Sprint(u.B),
+			efmt.Sprint(u.Tf),
+			efmt.Sprint(u.Tw),
+		)
+	}
 	return u.Name
 }
 
