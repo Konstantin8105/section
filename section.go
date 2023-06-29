@@ -3,6 +3,7 @@ package section
 import (
 	"bytes"
 	"fmt"
+	"sync"
 	"text/tabwriter"
 	"text/template"
 )
@@ -10,6 +11,34 @@ import (
 type Geor interface {
 	Geo(prec float64) string
 	GetName() string
+}
+
+var (
+	mutex sync.Mutex
+	ps    []Property
+)
+
+func GetProperty(name string) (p Property, err error) {
+	// stored data
+	for i := range ps {
+		if ps[i].Name == name {
+			pc := ps[i] // copy
+			return pc, nil
+		}
+	}
+	g, err := Get(name)
+	if err != nil {
+		return
+	}
+	pt, err := Calculate(g)
+	p = *pt // copy
+	// add to stored data
+	mutex.Lock()
+	defer func() {
+		mutex.Unlock()
+	}()
+	ps = append(ps, p)
+	return
 }
 
 func Get(name string) (_ Geor, err error) {

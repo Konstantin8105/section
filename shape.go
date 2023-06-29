@@ -18,28 +18,32 @@ import (
 //	ko  = sqrt(Jo/A)
 //
 // Moment inertia for move system coordinate to (dx,dy):
+//
 //	Jxx` = Jxx + A*dy^2
 //	Jyy` = Jyy + A*dx^2
 //	Jxy` = Jxy + A*dx*dy
 //
 // Moment inertia for rotate system coordinate on angle O:
+//
 //	Ju  = (Jx+Jy)/2 + (Jx-Jy)/2*cos(2*O) - Jxy*sin(2*O)
 //	Jv  = (Jx+Jy)/2 - (Jx-Jy)/2*cos(2*O) + Jxy*sin(2*O)
 //	Juv = (Jx-Jy)/2*sin(2*O)+Jxy*cos(2*O)
 //	Jo  = Ju+Jv = Jx+Jy
 //
 // Max/min moment inertia:
+//
 //	tan(2*O) = -2.0*Jxy/(Jx-Jy)
 //	Jmax,min = (Jx+Jy)/2 +- sqrt(((Jx-Jy)/2)^2+Jxy^2)
 //
 // Matrix of moment inertia:
+//
 //	[ Jxx -Jxy]
 //	[-Jxy  Jyy]
 //
 // First moment of area:
+//
 //	Sx = integral(y,dA)
 //	Sy = integral(x,dA)
-//
 type BendingProperty struct {
 	// https://en.wikipedia.org/wiki/First_moment_of_area
 	// https://en.wikipedia.org/wiki/Second_moment_of_area
@@ -103,6 +107,8 @@ func (b *BendingProperty) Calculate(mesh msh.Msh) {
 }
 
 type Property struct {
+	Name string
+
 	X, Y  float64 // location of center point
 	Alpha float64 // angle from base coordinates
 
@@ -124,6 +130,10 @@ type Property struct {
 	// TODO: polar moment inertia
 	// TODO: check on local buckling
 	// TODO: center of shear
+}
+
+func (p Property) GetName() string {
+	return p.Name
 }
 
 const (
@@ -205,6 +215,7 @@ func Jx3node(na, nb, nc msh.Node) (j float64) {
 }
 
 // J return moment inertia of triangle:
+//
 //	b - size of triangle base
 //	h - heigth of triangle
 func J(b, h float64) float64 {
@@ -214,6 +225,7 @@ func J(b, h float64) float64 {
 func Calculate(g Geor) (p *Property, err error) {
 	var mesh *msh.Msh
 	p = new(Property)
+	p.Name = g.GetName()
 
 	{ // calculate area and choose precition
 		lastArea := 0.0

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Konstantin8105/compare"
 	"github.com/Konstantin8105/section"
 )
 
@@ -212,17 +213,58 @@ func TestUB(t *testing.T) {
 	}
 }
 
-func ExampleC20() {
-	c20, err := section.Get("Швеллер 20У ГОСТ 8240")
+func Test(t *testing.T) {
+	name := "Швеллер 20У ГОСТ 8240"
+	c20, err := section.Get(name)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 	pr, err := section.Calculate(c20)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
-	fmt.Fprintf(os.Stdout, "Area = %.12e", pr.A)
+	s := printJson(pr)
+	compare.Test(t, ".test", []byte(s))
 
-	// Output:
-	// Area = 2.321310090657e-03
+	c20pr, err := section.GetProperty(name)
+	s2 := printJson(&c20pr)
+
+	if s != s2 {
+		t.Fatalf("diff names")
+	}
+}
+
+// cpu: Intel(R) Xeon(R) CPU E3-1240 V2 @ 3.40GHz
+// Benchmark/Get-4         	 5738064	        212.8 ns/op	      64 B/op	       1 allocs/op
+// Benchmark/Calculate-4   	       4	    284656617 ns/op	 1186370 B/op	   10855 allocs/op
+// Benchmark/GetProperty-4 	37749807	        31.03 ns/op	       0 B/op	       0 allocs/op
+func Benchmark(b *testing.B) {
+	b.Run("Get", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			_, err := section.Get("Швеллер 20У ГОСТ 8240")
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+	b.Run("Calculate", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			c20, err := section.Get("Швеллер 20У ГОСТ 8240")
+			if err != nil {
+				b.Fatal(err)
+			}
+			_, err = section.Calculate(c20)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+	b.Run("GetProperty", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			_, err := section.GetProperty("Швеллер 20У ГОСТ 8240")
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
 }
