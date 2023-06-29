@@ -226,7 +226,7 @@ func Test(t *testing.T) {
 	s := printJson(pr)
 	compare.Test(t, ".test", []byte(s))
 
-	c20pr, err := section.GetProperty(name)
+	c20pr, err := section.GetProperty(c20)
 	s2 := printJson(&c20pr)
 
 	if s != s2 {
@@ -260,8 +260,12 @@ func Benchmark(b *testing.B) {
 		}
 	})
 	b.Run("GetProperty", func(b *testing.B) {
+		g, err := section.Get("Швеллер 20У ГОСТ 8240")
+		if err != nil {
+			b.Fatal(err)
+		}
 		for n := 0; n < b.N; n++ {
-			_, err := section.GetProperty("Швеллер 20У ГОСТ 8240")
+			_, err := section.GetProperty(g)
 			if err != nil {
 				b.Fatal(err)
 			}

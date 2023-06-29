@@ -18,17 +18,13 @@ var (
 	ps    []Property
 )
 
-func GetProperty(name string) (p Property, err error) {
+func GetProperty(g Geor) (p Property, err error) {
 	// stored data
 	for i := range ps {
-		if ps[i].Name == name {
+		if ps[i].Name == g.GetName(){
 			pc := ps[i] // copy
 			return pc, nil
 		}
-	}
-	g, err := Get(name)
-	if err != nil {
-		return
 	}
 	pt, err := Calculate(g)
 	p = *pt // copy
