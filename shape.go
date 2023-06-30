@@ -48,10 +48,10 @@ type BendingProperty struct {
 	// https://en.wikipedia.org/wiki/First_moment_of_area
 	// https://en.wikipedia.org/wiki/Second_moment_of_area
 	// https://en.wikipedia.org/wiki/Section_modulus
-	Jxx, Ymax, Wx, Rx, WxPlastic float64 // bending moments of inertia
-	Jyy, Xmax, Wy, Ry, WyPlastic float64 // bending moments of inertia
-	Jxy                          float64 // centrifugal moment of inertia
-	Jo, Ro                       float64 // polar moment of inertia
+	Jxx, Ymax, Wx, Rx, Sx, WxPlastic float64 // bending moments of inertia
+	Jyy, Xmax, Wy, Ry, Sy, WyPlastic float64 // bending moments of inertia
+	Jxy                              float64 // centrifugal moment of inertia
+	Jo, Ro                           float64 // polar moment of inertia
 
 	// TODO
 	// Sx, Sy float64 // first moment of area
@@ -85,21 +85,21 @@ func (b *BendingProperty) Alpha() float64 {
 
 func (b *BendingProperty) Calculate(mesh msh.Msh) {
 	A, _ := Area(mesh)
-	calc := func() (j, h, w, r, wpl float64) {
+	calc := func() (j, h, w, r, wpl, s float64) {
 		j = Jxx(mesh)
 		h = Ymax(mesh)
 		w = j / h
 		r = math.Sqrt(j / A)
 		wpl = WxPlastic(mesh)
-		// s = Sx(mesh)
+		s = Sx(mesh)
 		return
 	}
 
 	const perp float64 = math.Pi / 2.0 // 90 degree
 
-	b.Jxx, b.Ymax, b.Wx, b.Rx, b.WxPlastic = calc()
+	b.Jxx, b.Ymax, b.Wx, b.Rx, b.WxPlastic, b.Sx = calc()
 	RotateXOY(&mesh, perp)
-	b.Jyy, b.Xmax, b.Wy, b.Ry, b.WyPlastic = calc()
+	b.Jyy, b.Xmax, b.Wy, b.Ry, b.WyPlastic, b.Sy = calc()
 	RotateXOY(&mesh, -perp)
 	b.Jxy = Jxy(mesh)
 	b.Jo = b.Jxx + b.Jyy
@@ -336,9 +336,26 @@ func Ymax(mesh msh.Msh) float64 {
 }
 
 // first moment of area
+// Sx = integral{y, dA)
 func Sx(mesh msh.Msh) float64 {
-	// panic("implement")
-	return -1 // TODO
+	var S float64
+	for i := range mesh.Elements {
+		if mesh.Elements[i].EType != msh.Triangle {
+			continue
+		}
+		var (
+			ns = mesh.Elements[i].NodeId
+			na = mesh.Nodes[mesh.GetNode(ns[0])]
+			nb = mesh.Nodes[mesh.GetNode(ns[1])]
+			nc = mesh.Nodes[mesh.GetNode(ns[2])]
+			// center mass of triangle
+			c = Center3node(na, nb, nc)
+			// area of triangle
+			a = Area3node(na, nb, nc)
+		)
+		S += c.Coord[1] * a
+	}
+	return S
 }
 
 func Jxx(mesh msh.Msh) float64 {
