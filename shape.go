@@ -353,7 +353,7 @@ func Sx(mesh msh.Msh) float64 {
 			// area of triangle
 			a = Area3node(na, nb, nc)
 		)
-		S += c.Coord[1] * a
+		S += math.Abs(c.Coord[1] * a)
 	}
 	return S
 }
