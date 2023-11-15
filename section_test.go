@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -13,6 +14,10 @@ import (
 	"github.com/Konstantin8105/compare"
 	"github.com/Konstantin8105/section"
 )
+
+func td(filename string) string {
+	return filepath.Join("testdata", filename)
+}
 
 func ExampleGet() {
 	g, err := section.Get("20B1-ASCM")
@@ -224,7 +229,7 @@ func Test(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := printJson(pr)
-	compare.Test(t, ".test", []byte(s))
+	compare.Test(t, td(".test"), []byte(s))
 
 	c20pr, err := section.GetProperty(c20)
 	s2 := printJson(&c20pr)
@@ -273,11 +278,11 @@ func Benchmark(b *testing.B) {
 	})
 }
 
-func TestList(t *testing.T){
+func TestList(t *testing.T) {
 	list := section.GetList()
 	var buf bytes.Buffer
 	for i := range list {
 		fmt.Fprintf(&buf, "%s\n", list[i].GetName())
 	}
-	compare.Test(t, ".test.list", buf.Bytes())
+	compare.Test(t, td(".test.list"), buf.Bytes())
 }
