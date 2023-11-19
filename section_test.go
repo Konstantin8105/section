@@ -243,37 +243,62 @@ func Test(t *testing.T) {
 // Benchmark/Get-4         	 5738064	        212.8 ns/op	      64 B/op	       1 allocs/op
 // Benchmark/Calculate-4   	       4	    284656617 ns/op	 1186370 B/op	   10855 allocs/op
 // Benchmark/GetProperty-4 	37749807	        31.03 ns/op	       0 B/op	       0 allocs/op
+//
+// cpu: Intel(R) Xeon(R) CPU           X5550  @ 2.67GHz
+// Benchmark/Get-8         	   75926	     18192 ns/op	    9520 B/op	      98 allocs/op
+// Benchmark/Calculate-8   	       4	 286957623 ns/op	 1276140 B/op	   10995 allocs/op
+// Benchmark/GetProperty-8 	13540945	        79.70 ns/op	       0 B/op	       0 allocs/op
+//
+// Benchmark/Get/0-8       	   69296	     18588 ns/op	    9520 B/op	      98 allocs/op
+// Benchmark/Get/1-8       	   63228	     18566 ns/op	    9520 B/op	      98 allocs/op
+// Benchmark/Calculate/0-8 	       4	 286663606 ns/op	 1274800 B/op	   10997 allocs/op
+// Benchmark/Calculate/1-8 	       7	 150331238 ns/op	  157937 B/op	     664 allocs/op
+// Benchmark/Property/0-8  	13376570	        78.90 ns/op	       0 B/op	       0 allocs/op
+// Benchmark/Property/1-8  	14337594	        81.01 ns/op	       0 B/op	       0 allocs/op
 func Benchmark(b *testing.B) {
+	names := []string{"Швеллер 20У ГОСТ 8240", "Plate 100x10"}
 	b.Run("Get", func(b *testing.B) {
-		for n := 0; n < b.N; n++ {
-			_, err := section.Get("Швеллер 20У ГОСТ 8240")
-			if err != nil {
-				b.Fatal(err)
-			}
+		for i, name := range names {
+			b.Run(fmt.Sprintf("%d", i), func(b *testing.B) {
+				for n := 0; n < b.N; n++ {
+					_, err := section.Get(name)
+					if err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
 		}
 	})
 	b.Run("Calculate", func(b *testing.B) {
-		for n := 0; n < b.N; n++ {
-			c20, err := section.Get("Швеллер 20У ГОСТ 8240")
-			if err != nil {
-				b.Fatal(err)
-			}
-			_, err = section.Calculate(c20)
-			if err != nil {
-				b.Fatal(err)
-			}
+		for i, name := range names {
+			b.Run(fmt.Sprintf("%d", i), func(b *testing.B) {
+				for n := 0; n < b.N; n++ {
+					c20, err := section.Get(name)
+					if err != nil {
+						b.Fatal(err)
+					}
+					_, err = section.Calculate(c20)
+					if err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
 		}
 	})
-	b.Run("GetProperty", func(b *testing.B) {
-		g, err := section.Get("Швеллер 20У ГОСТ 8240")
-		if err != nil {
-			b.Fatal(err)
-		}
-		for n := 0; n < b.N; n++ {
-			_, err := section.GetProperty(g)
-			if err != nil {
-				b.Fatal(err)
-			}
+	b.Run("Property", func(b *testing.B) {
+		for i, name := range names {
+			b.Run(fmt.Sprintf("%d", i), func(b *testing.B) {
+				g, err := section.Get(name)
+				if err != nil {
+					b.Fatal(err)
+				}
+				for n := 0; n < b.N; n++ {
+					_, err := section.GetProperty(g)
+					if err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
 		}
 	})
 }

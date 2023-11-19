@@ -437,7 +437,7 @@ type Rectangle struct {
 
 func (r Rectangle) GetName() string {
 	if r.Name == "" {
-		return fmt.Sprintf("Rectangel H%.2f x Thk%.2f",
+		return fmt.Sprintf("Rectangle H%.2f x Thk%.2f",
 			1e3*r.H,
 			1e3*r.Thk,
 		)
