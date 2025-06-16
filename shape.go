@@ -1,9 +1,12 @@
 package section
 
 import (
+	"bytes"
 	"fmt"
 	"math"
+	"text/tabwriter"
 
+	"github.com/Konstantin8105/efmt"
 	"github.com/Konstantin8105/msh"
 	"github.com/Konstantin8105/pow"
 )
@@ -75,6 +78,36 @@ type BendingProperty struct {
 	// TODO https://www.ae.msstate.edu/tupas/SA2/Course.html
 }
 
+func (b BendingProperty) String() string {
+	var buf bytes.Buffer
+	w := tabwriter.NewWriter(&buf, 0, 0, 3, ' ', tabwriter.TabIndent)
+	// by axe X
+	fmt.Fprintf(w, "By axe\tX\t.\n")
+	fmt.Fprintf(w, "Jxx\t%s\tMoment inertia by axe X\n", efmt.Sprint(b.Jxx))
+	fmt.Fprintf(w, "Ymax\t%s\tMaximal distance from axe X\n", efmt.Sprint(b.Ymax))
+	fmt.Fprintf(w, "Wx\t%s\tElastic moment resistance around axe X\n", efmt.Sprint(b.Wx))
+	fmt.Fprintf(w, "Rx\t%s\tRadius inertia around axe X\n", efmt.Sprint(b.Rx))
+	fmt.Fprintf(w, "WxPlastic\t%s\tPlastic moment resistance around axe X\n", efmt.Sprint(b.WxPlastic))
+	// by axe Y
+	fmt.Fprintf(w, "By axe\tY\t.\n")
+	fmt.Fprintf(w, "Jyy\t%s\tMoment inertia by axe Y\n", efmt.Sprint(b.Jyy))
+	fmt.Fprintf(w, "Xmax\t%s\tMaximal distance from axe Y\n", efmt.Sprint(b.Xmax))
+	fmt.Fprintf(w, "Wy\t%s\tElastic moment resistance around axe Y\n", efmt.Sprint(b.Wy))
+	fmt.Fprintf(w, "Ry\t%s\tRadius inertia around axe Y\n", efmt.Sprint(b.Ry))
+	fmt.Fprintf(w, "WyPlastic\t%s\tPlastic moment resistance around axe Y\n", efmt.Sprint(b.WyPlastic))
+	// other
+	fmt.Fprintf(w, "By axe\tOther\t.\n")
+	fmt.Fprintf(w, "Jxy\t%s\tCentrifugal moment inertia by axe X-Y\n", efmt.Sprint(b.Jxy))
+	// polar
+	fmt.Fprintf(w, "By axe\tPolar\t.\n")
+	fmt.Fprintf(w, "Jo\t%s\tPolar moment inertia\n", efmt.Sprint(b.Jo))
+	fmt.Fprintf(w, "Ro\t%s\tPolar radius moment inertia\n", efmt.Sprint(b.Ro))
+
+	fmt.Fprintf(w, "\n")
+	w.Flush()
+	return buf.String()
+}
+
 // In principal axes, that are rotated by an angle θ relative
 // to original centroidal ones x,y, the product of inertia becomes zero.
 func (b *BendingProperty) Alpha() float64 {
@@ -134,6 +167,27 @@ type Property struct {
 
 func (p Property) GetName() string {
 	return p.Name
+}
+
+func (p Property) String() string {
+	var buf bytes.Buffer
+	w := tabwriter.NewWriter(&buf, 0, 0, 3, ' ', tabwriter.TabIndent)
+	if p.Name != "" {
+		fmt.Fprintf(w, "Name: %s\n", p.Name)
+	} else {
+		fmt.Fprintf(w, "Name: %s\n", "Undefined")
+	}
+	fmt.Fprintf(w, "X\t%s\tlocation center of mass by axe X\n", efmt.Sprint(p.X))
+	fmt.Fprintf(w, "Y\t%s\tlocation center of mass by axe Y\n", efmt.Sprint(p.Y))
+	fmt.Fprintf(w, "Alpha\t%s\tAngle from base coordinates\n", efmt.Sprint(p.Alpha))
+	fmt.Fprintf(w, "A\t%s\tArea of section\n", efmt.Sprint(p.A))
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "Bending property: At base point\n%s", p.AtBasePoint)
+	fmt.Fprintf(w, "Bending property: At center point\n%s", p.AtCenterPoint)
+	fmt.Fprintf(w, "Bending property: On section axe\n%s", p.OnSectionAxe)
+	fmt.Fprintf(w, "\n")
+	w.Flush()
+	return buf.String()
 }
 
 const (

@@ -219,24 +219,50 @@ func TestUB(t *testing.T) {
 }
 
 func Test(t *testing.T) {
-	name := "Швеллер 20У ГОСТ 8240"
-	c20, err := section.Get(name)
-	if err != nil {
-		t.Fatal(err)
-	}
-	pr, err := section.Calculate(c20)
-	if err != nil {
-		t.Fatal(err)
-	}
-	s := printJson(pr)
-	compare.Test(t, td(".test"), []byte(s))
+	t.Run("channel", func(t *testing.T) {
+		name := "Швеллер 20У ГОСТ 8240"
+		c20, err := section.Get(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pr, err := section.Calculate(c20)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := printJson(pr)
+		compare.Test(t, td(".test"), []byte(s))
 
-	c20pr, err := section.GetProperty(c20)
-	s2 := printJson(&c20pr)
+		c20pr, err := section.GetProperty(c20)
+		s2 := printJson(&c20pr)
 
-	if s != s2 {
-		t.Fatalf("diff names")
-	}
+		if s != s2 {
+			t.Fatalf("diff names")
+		}
+	})
+	t.Run("list", func(t *testing.T) {
+		list := section.GetList()
+		var buf bytes.Buffer
+		for i := range list {
+			fmt.Fprintf(&buf, "%s\n", list[i].GetName())
+		}
+		compare.Test(t, td(".test.list"), buf.Bytes())
+	})
+	t.Run("plate group", func(t *testing.T) {
+		pg := section.PlateGroup{
+			Name: "test",
+			Plates: []section.Plate{
+				{Xc: 0.0000, Yc: 0.0175, X: 0.3000, Y: 0.0350},
+				{Xc: 0.0000, Yc: 0.8825, X: 0.3000, Y: 0.0350},
+				{Xc: 0.0000, Yc: 0.4500, X: 0.0185, Y: 0.8300},
+			},
+		}
+		pr, err := section.Calculate(pg)
+		if err != nil {
+			t.Fatal(err)
+			return
+		}
+		compare.Test(t, "test.plate.group", []byte(pr.String()))
+	})
 }
 
 // cpu: Intel(R) Xeon(R) CPU E3-1240 V2 @ 3.40GHz
@@ -301,13 +327,4 @@ func Benchmark(b *testing.B) {
 			})
 		}
 	})
-}
-
-func TestList(t *testing.T) {
-	list := section.GetList()
-	var buf bytes.Buffer
-	for i := range list {
-		fmt.Fprintf(&buf, "%s\n", list[i].GetName())
-	}
-	compare.Test(t, td(".test.list"), buf.Bytes())
 }

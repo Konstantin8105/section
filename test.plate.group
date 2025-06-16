@@ -1,0 +1,71 @@
+Name: test
+
+№   Xc        Yc            X             Y
+0   0.00000   17.5000e-03   0.30000       35.0000e-03
+1   0.00000   0.88250       0.30000       35.0000e-03
+2   0.00000   0.45000       18.5000e-03   0.83000
+
+
+X       -4.95950e-18   location center of mass by axe X
+Y       0.45000        location center of mass by axe Y
+Alpha   1.57080        Angle from base coordinates
+A       36.3550e-03    Area of section
+
+Bending property: At base point
+By axe      X             .
+Jxx         12.1747e-03   Moment inertia by axe X
+Ymax        0.90000       Maximal distance from axe X
+Wx          13.5275e-03   Elastic moment resistance around axe X
+Rx          0.57869       Radius inertia around axe X
+WxPlastic   16.3597e-03   Plastic moment resistance around axe X
+By axe      Y             .
+Jyy         159.282e-06   Moment inertia by axe Y
+Xmax        0.15000       Maximal distance from axe Y
+Wy          1.06188e-03   Elastic moment resistance around axe Y
+Ry          66.1914e-03   Radius inertia around axe Y
+WyPlastic   1.64602e-03   Plastic moment resistance around axe Y
+By axe      Other         .
+Jxy         1.48501e-18   Centrifugal moment inertia by axe X-Y
+By axe      Polar         .
+Jo          12.3340e-03   Polar moment inertia
+Ro          0.58246       Polar radius moment inertia
+
+Bending property: At center point
+By axe      X             .
+Jxx         4.81310e-03   Moment inertia by axe X
+Ymax        0.45000       Maximal distance from axe X
+Wx          10.6958e-03   Elastic moment resistance around axe X
+Rx          0.36386       Radius inertia around axe X
+WxPlastic   12.2687e-03   Plastic moment resistance around axe X
+By axe      Y             .
+Jyy         159.282e-06   Moment inertia by axe Y
+Xmax        0.15000       Maximal distance from axe Y
+Wy          1.06188e-03   Elastic moment resistance around axe Y
+Ry          66.1913e-03   Radius inertia around axe Y
+WyPlastic   1.64602e-03   Plastic moment resistance around axe Y
+By axe      Other         .
+Jxy         1.46603e-18   Centrifugal moment inertia by axe X-Y
+By axe      Polar         .
+Jo          4.97238e-03   Polar moment inertia
+Ro          0.36983       Polar radius moment inertia
+
+Bending property: On section axe
+By axe      X             .
+Jxx         159.291e-06   Moment inertia by axe X
+Ymax        0.15000       Maximal distance from axe X
+Wx          1.06194e-03   Elastic moment resistance around axe X
+Rx          66.1933e-03   Radius inertia around axe X
+WxPlastic   1.64602e-03   Plastic moment resistance around axe X
+By axe      Y             .
+Jyy         4.81353e-03   Moment inertia by axe Y
+Xmax        0.45000       Maximal distance from axe Y
+Wy          10.6967e-03   Elastic moment resistance around axe Y
+Ry          0.36387       Radius inertia around axe Y
+WyPlastic   12.2687e-03   Plastic moment resistance around axe Y
+By axe      Other         .
+Jxy         0.00000       Centrifugal moment inertia by axe X-Y
+By axe      Polar         .
+Jo          4.97282e-03   Polar moment inertia
+Ro          0.36984       Polar radius moment inertia
+
+

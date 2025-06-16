@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	github.com/Konstantin8105/efmt v0.0.0-20241229184657-294e6b8c6040 // indirect
 	github.com/Konstantin8105/errors v0.1.0 // indirect
 	github.com/Konstantin8105/gog v0.0.0-20231103072609-ab563982fa10 // indirect
 	github.com/Konstantin8105/reindex v0.0.0-20231101085116-38623e662e8c // indirect

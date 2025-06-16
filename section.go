@@ -6,6 +6,8 @@ import (
 	"sync"
 	"text/tabwriter"
 	"text/template"
+
+	"github.com/Konstantin8105/efmt"
 )
 
 type Geor interface {
@@ -472,6 +474,65 @@ var Rectangles = []Rectangle{
 	{"Plate 60x6", 0.060, 0.006},
 	{"Plate 75x7", 0.075, 0.007},
 	{"Plate 100x10", 0.100, 0.010},
+}
+
+// Plate
+type Plate struct {
+	Xc, Yc float64 // location of center mass of plate
+	X, Y   float64 // sizes by directions x and y
+}
+
+type PlateGroup struct {
+	Name   string
+	Plates []Plate
+}
+
+func (pg PlateGroup) GetName() string {
+	var buf bytes.Buffer
+	w := tabwriter.NewWriter(&buf, 0, 0, 3, ' ', tabwriter.TabIndent)
+	if pg.Name != "" {
+		fmt.Fprintf(w, "%s\n", pg.Name)
+	} else {
+		fmt.Fprintf(w, "%s\n", "Plate group")
+	}
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "№\tXc\tYc\tX\tY\n")
+	for i, p := range pg.Plates {
+		fmt.Fprintf(w,
+			"%d\t%s\t%s\t%s\t%s\n",
+			i,
+			efmt.Sprint(p.Xc), efmt.Sprint(p.Yc),
+			efmt.Sprint(p.X), efmt.Sprint(p.Y),
+		)
+	}
+	fmt.Fprintf(w, "\n")
+	w.Flush()
+	return buf.String()
+}
+
+func (pg PlateGroup) Geo(prec float64) string {
+	var geo string
+	geo += fmt.Sprintf("Lc = %.5f;\n", prec)
+	for i, p := range pg.Plates {
+		geo += fmt.Sprintf("Xc = %.5f;\n", p.Xc)
+		geo += fmt.Sprintf("Yc = %.5f;\n", p.Yc)
+		geo += fmt.Sprintf("X  = %.5f;\n", p.X)
+		geo += fmt.Sprintf("Y  = %.5f;\n", p.Y)
+		geo += fmt.Sprintf("ID = %d;\n", (i+1)*10000) // maximal 10000 plates
+		geo += `
+	Point(ID + 000) = {Xc - X/2.0 , Yc - Y/2.0,+0.0000,Lc};
+	Point(ID + 001) = {Xc + X/2.0 , Yc - Y/2.0,+0.0000,Lc};
+	Point(ID + 002) = {Xc - X/2.0 , Yc + Y/2.0,+0.0000,Lc};
+	Point(ID + 003) = {Xc + X/2.0 , Yc + Y/2.0,+0.0000,Lc};
+	Line(ID + 1) = { ID + 1, ID + 3};
+	Line(ID + 2) = { ID + 0, ID + 2};
+	Line(ID + 3) = { ID + 0, ID + 1};
+	Line(ID + 4) = { ID + 2, ID + 3};
+	Line Loop(ID + 5) = {ID + 1, -(ID + 4),-( ID + 2), ID + 3};
+	Plane Surface(ID + 6) = {ID + 5};
+`
+	}
+	return geo
 }
 
 // Tsection
