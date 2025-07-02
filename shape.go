@@ -276,65 +276,65 @@ func J(b, h float64) float64 {
 	return math.Abs(b * pow.E3(h) / 12.0)
 }
 
-func Calculate(g Geor) (p *Property, err error) {
-	var mesh *msh.Msh
-	p = new(Property)
-	p.Name = g.GetName()
-
-	{ // calculate area and choose precition
-		lastArea := 0.0
-		var prec float64 = 0.1 // TODO: auto finding
-		var center msh.Node
-		for iter := 0; iter < IterMax; iter++ {
-			prec /= 2.0
-			// choose precition by area
-			mesh, err = msh.New(g.Geo(prec))
-			if err != nil {
-				return
-			}
-			if iter == 0 {
-				lastArea, _ = Area(*mesh) // center is no need
-				continue
-			}
-			if lastArea <= 0 {
-				err = fmt.Errorf("Area is not valid: %e", lastArea)
-				return
-			}
-			p.A, center = Area(*mesh)
-			if math.Abs((p.A-lastArea)/lastArea) < Eps {
-				break
-			}
-			lastArea = p.A
+func GenerateMsh(g Geor) (mesh *msh.Msh, err error) {
+	// calculate area and choose precition
+	newArea, lastArea := 0.0, 0.0
+	var prec float64 = 0.1 // TODO: auto finding
+	for iter := range IterMax {
+		prec /= 2.0
+		// choose precition by area
+		mesh, err = msh.New(g.Geo(prec))
+		if err != nil {
+			return
 		}
-		p.X = center.Coord[0]
-		p.Y = center.Coord[1]
+		if iter == 0 {
+			lastArea, _ = Area(*mesh) // center is no need
+			continue
+		}
+		if lastArea <= 0 {
+			err = fmt.Errorf("Area is not valid: %e", lastArea)
+			return
+		}
+		newArea, _ = Area(*mesh)
+		if math.Abs((newArea-lastArea)/lastArea) < Eps {
+			break
+		}
+		lastArea = newArea
 	}
-
+	// check - avoid point in Z direction
 	for i, point := range mesh.Nodes {
 		if point.Coord[2] != 0 {
 			err = fmt.Errorf("Coordinate Z of point %d is not zero: %f", i, point.Coord[2])
 			return
 		}
 	}
+	return
+}
 
+func Calculate(g Geor) (p *Property, err error) {
+	// find acceptable mesh
+	mesh, err := GenerateMsh(g)
+	if err != nil {
+		return
+	}
+	var center msh.Node
+	p = new(Property)
+	p.Name = g.GetName()
+	p.A, center = Area(*mesh)
+	p.X = center.Coord[0]
+	p.Y = center.Coord[1]
 	// calculate at the base point
 	p.AtBasePoint.Calculate(*mesh)
-
 	// calculate at the center point
 	MoveXOY(mesh, -p.X, -p.Y)
-
 	// calculate at the center point
 	p.AtCenterPoint.Calculate(*mesh)
-
 	// calculate at the center point with Jx minimal moment of inertia
 	p.Alpha = p.AtCenterPoint.Alpha()
-
 	// rotate
 	RotateXOY(mesh, -p.Alpha)
-
 	// calculate at the center point and rotate axes
 	p.OnSectionAxe.Calculate(*mesh)
-
 	return
 }
 
