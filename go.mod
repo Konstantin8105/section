@@ -5,7 +5,7 @@ go 1.23
 toolchain go1.24.2
 
 require (
-	github.com/Konstantin8105/compare v0.0.0-20241110101050-be8c917edda3
+	github.com/Konstantin8105/compare v0.0.0-20250714171656-28fa0538748e
 	github.com/Konstantin8105/efmt v0.0.0-20241229184657-294e6b8c6040
 	github.com/Konstantin8105/msh v0.0.0-20231103191404-5e8d56fabc1f
 	github.com/Konstantin8105/pow v0.1.0
