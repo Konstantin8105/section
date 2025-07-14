@@ -29,6 +29,9 @@ func GetProperty(g Geor) (p Property, err error) {
 		}
 	}
 	pt, err := Calculate(g)
+	if err != nil {
+		return
+	}
 	p = *pt // copy
 	// add to stored data
 	mutex.Lock()
