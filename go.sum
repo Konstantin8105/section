@@ -6,10 +6,14 @@ github.com/Konstantin8105/cs v0.0.0-20190517091010-c069cc1cee1b h1:IZkvBy8TJTxpP
 github.com/Konstantin8105/cs v0.0.0-20190517091010-c069cc1cee1b/go.mod h1:NquwK4RWQZiMO4cVCacCuMklZ+bPxxHSR8h8Qc51EPk=
 github.com/Konstantin8105/efmt v0.0.0-20241229184657-294e6b8c6040 h1:iXZ2zCRCrOZ6ep/NQICMTNZtWPe8+4ol3lT3eNaSoVA=
 github.com/Konstantin8105/efmt v0.0.0-20241229184657-294e6b8c6040/go.mod h1:22OpVKNCKOSZXse+75KmZomEvu1EfRxnfOVg3Zv6BQw=
+github.com/Konstantin8105/efmt v0.0.0-20260403100540-a1574d0727a6 h1:fHhdlscoPBCqA6PAndzgGR/33J6K02YEJZJ0+k2nDCM=
+github.com/Konstantin8105/efmt v0.0.0-20260403100540-a1574d0727a6/go.mod h1:22OpVKNCKOSZXse+75KmZomEvu1EfRxnfOVg3Zv6BQw=
 github.com/Konstantin8105/errors v0.1.0 h1:YlF98T37IPvBGzxbj6AhXrY4VdoFfW60KEibUOtOpkg=
 github.com/Konstantin8105/errors v0.1.0/go.mod h1:cKK/HtcfxJFe1RvnGzhWl8jcZpnTqZjKwvMBUrLsis4=
 github.com/Konstantin8105/gog v0.0.0-20250318072649-9c1405e03e0f h1:1dLlu7WuXbS47HYlKbcQEL8eSl6tAvKDsLlr434MR8Y=
 github.com/Konstantin8105/gog v0.0.0-20250318072649-9c1405e03e0f/go.mod h1:P26qWVJ7yapmO5vP8YtyYAMR3wFJZADXuiWaAxWwTuw=
+github.com/Konstantin8105/gog v0.0.0-20251211121929-e71009fca529 h1:ed+mUDXeKKCWvbGX8hDsAonFnfYXjFl55OzhOWVGDwA=
+github.com/Konstantin8105/gog v0.0.0-20251211121929-e71009fca529/go.mod h1:P26qWVJ7yapmO5vP8YtyYAMR3wFJZADXuiWaAxWwTuw=
 github.com/Konstantin8105/msh v0.0.0-20231103191404-5e8d56fabc1f h1:aiOAs+i5X81p/H3h7yWc8R1DgC/GPUkBtNtxiyk7iso=
 github.com/Konstantin8105/msh v0.0.0-20231103191404-5e8d56fabc1f/go.mod h1:Iebd9fqp5vpl+kDkYURULyjXvdsYP0V6hZ1cEO8pKoI=
 github.com/Konstantin8105/pow v0.1.0 h1:1FBuKD4UEXKRsP0snDUGqbok5LcwYPUbq5ClVOW++cE=
